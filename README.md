@@ -1,12 +1,14 @@
-goja
+sobek
 ====
 
 ECMAScript 5.1(+) implementation in Go.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/dop251/goja.svg)](https://pkg.go.dev/github.com/dop251/goja)
+[![Go Reference](https://pkg.go.dev/badge/github.com/grafana/sobek.svg)](https://pkg.go.dev/github.com/grafana/sobek)
 
-Goja is an implementation of ECMAScript 5.1 in pure Go with emphasis on standard compliance and
+Sobek is an implementation of ECMAScript 5.1 in pure Go with emphasis on standard compliance and
 performance.
+
+This project is a fork of [goja](https://github.com/dop251/goja).
 
 This project was largely inspired by [otto](https://github.com/robertkrimen/otto).
 
@@ -20,7 +22,7 @@ Features
    pass all of them. See .tc39_test262_checkout.sh for the latest working commit id.
  * Capable of running Babel, Typescript compiler and pretty much anything written in ES5.
  * Sourcemaps.
- * Most of ES6 functionality, still work in progress, see https://github.com/dop251/goja/milestone/1?closed=1
+ * Most of ES6 functionality, still work in progress, see https://github.com/grafana/sobek/milestone/1?closed=1
 
 Known incompatibilities and caveats
 -----------------------------------
@@ -98,7 +100,7 @@ It gives you a much better control over execution environment so can be useful f
 
 ### Is it goroutine-safe?
 
-No. An instance of goja.Runtime can only be used by a single goroutine
+No. An instance of sobek.Runtime can only be used by a single goroutine
 at a time. You can create as many instances of Runtime as you like but
 it's not possible to pass object values between runtimes.
 
@@ -106,13 +108,11 @@ it's not possible to pass object values between runtimes.
 
 setTimeout() assumes concurrent execution of code which requires an execution
 environment, for example an event loop similar to nodejs or a browser.
-There is a [separate project](https://github.com/dop251/goja_nodejs) aimed at providing some NodeJS functionality,
-and it includes an event loop.
 
 ### Can you implement (feature X from ES6 or higher)?
 
 I will be adding features in their dependency order and as quickly as time permits. Please do not ask
-for ETAs. Features that are open in the [milestone](https://github.com/dop251/goja/milestone/1) are either in progress
+for ETAs. Features that are open in the [milestone](https://github.com/grafana/sobek/milestone/1) are either in progress
 or will be worked on next.
 
 The ongoing work is done in separate feature branches which are merged into master when appropriate.
@@ -141,7 +141,7 @@ Basic Example
 Run JavaScript and get the result value.
 
 ```go
-vm := goja.New()
+vm := sobek.New()
 v, err := vm.RunString("2 + 2")
 if err != nil {
     panic(err)
@@ -153,13 +153,13 @@ if num := v.Export().(int64); num != 4 {
 
 Passing Values to JS
 --------------------
-Any Go value can be passed to JS using Runtime.ToValue() method. See the method's [documentation](https://pkg.go.dev/github.com/dop251/goja#Runtime.ToValue) for more details.
+Any Go value can be passed to JS using Runtime.ToValue() method. See the method's [documentation](https://pkg.go.dev/github.com/grafana/sobek#Runtime.ToValue) for more details.
 
 Exporting Values from JS
 ------------------------
 A JS value can be exported into its default Go representation using Value.Export() method.
 
-Alternatively it can be exported into a specific Go variable using [Runtime.ExportTo()](https://pkg.go.dev/github.com/dop251/goja#Runtime.ExportTo) method.
+Alternatively it can be exported into a specific Go variable using [Runtime.ExportTo()](https://pkg.go.dev/github.com/grafana/sobek#Runtime.ExportTo) method.
 
 Within a single export operation the same Object will be represented by the same Go value (either the same map, slice or
 a pointer to the same struct). This includes circular objects and makes it possible to export them.
@@ -168,7 +168,7 @@ Calling JS functions from Go
 ----------------------------
 There are 2 approaches:
 
-- Using [AssertFunction()](https://pkg.go.dev/github.com/dop251/goja#AssertFunction):
+- Using [AssertFunction()](https://pkg.go.dev/github.com/grafana/sobek#AssertFunction):
 ```go
 const SCRIPT = `
 function sum(a, b) {
@@ -176,24 +176,24 @@ function sum(a, b) {
 }
 `
 
-vm := goja.New()
+vm := sobek.New()
 _, err := vm.RunString(SCRIPT)
 if err != nil {
     panic(err)
 }
-sum, ok := goja.AssertFunction(vm.Get("sum"))
+sum, ok := sobek.AssertFunction(vm.Get("sum"))
 if !ok {
     panic("Not a function")
 }
 
-res, err := sum(goja.Undefined(), vm.ToValue(40), vm.ToValue(2))
+res, err := sum(sobek.Undefined(), vm.ToValue(40), vm.ToValue(2))
 if err != nil {
     panic(err)
 }
 fmt.Println(res)
 // Output: 42
 ```
-- Using [Runtime.ExportTo()](https://pkg.go.dev/github.com/dop251/goja#Runtime.ExportTo):
+- Using [Runtime.ExportTo()](https://pkg.go.dev/github.com/grafana/sobek#Runtime.ExportTo):
 ```go
 const SCRIPT = `
 function sum(a, b) {
@@ -201,7 +201,7 @@ function sum(a, b) {
 }
 `
 
-vm := goja.New()
+vm := sobek.New()
 _, err := vm.RunString(SCRIPT)
 if err != nil {
     panic(err)
@@ -224,10 +224,10 @@ Mapping struct field and method names
 -------------------------------------
 By default, the names are passed through as is which means they are capitalised. This does not match
 the standard JavaScript naming convention, so if you need to make your JS code look more natural or if you are
-dealing with a 3rd party library, you can use a [FieldNameMapper](https://pkg.go.dev/github.com/dop251/goja#FieldNameMapper):
+dealing with a 3rd party library, you can use a [FieldNameMapper](https://pkg.go.dev/github.com/grafana/sobek#FieldNameMapper):
 
 ```go
-vm := goja.New()
+vm := sobek.New()
 vm.SetFieldNameMapper(TagFieldNameMapper("json", true))
 type S struct {
     Field int `json:"field"`
@@ -238,19 +238,19 @@ fmt.Println(res.Export())
 // Output: 42
 ```
 
-There are two standard mappers: [TagFieldNameMapper](https://pkg.go.dev/github.com/dop251/goja#TagFieldNameMapper) and
-[UncapFieldNameMapper](https://pkg.go.dev/github.com/dop251/goja#UncapFieldNameMapper), or you can use your own implementation.
+There are two standard mappers: [TagFieldNameMapper](https://pkg.go.dev/github.com/grafana/sobek#TagFieldNameMapper) and
+[UncapFieldNameMapper](https://pkg.go.dev/github.com/grafana/sobek#UncapFieldNameMapper), or you can use your own implementation.
 
 Native Constructors
 -------------------
 
-In order to implement a constructor function in Go use `func (goja.ConstructorCall) *goja.Object`.
-See [Runtime.ToValue()](https://pkg.go.dev/github.com/dop251/goja#Runtime.ToValue) documentation for more details.
+In order to implement a constructor function in Go use `func (sobek.ConstructorCall) *sobek.Object`.
+See [Runtime.ToValue()](https://pkg.go.dev/github.com/grafana/sobek#Runtime.ToValue) documentation for more details.
 
 Regular Expressions
 -------------------
 
-Goja uses the embedded Go regexp library where possible, otherwise it falls back to [regexp2](https://github.com/dlclark/regexp2).
+Sobek uses the embedded Go regexp library where possible, otherwise it falls back to [regexp2](https://github.com/dlclark/regexp2).
 
 Exceptions
 ----------
@@ -259,7 +259,7 @@ Any exception thrown in JavaScript is returned as an error of type *Exception. I
 by using the Value() method:
 
 ```go
-vm := goja.New()
+vm := sobek.New()
 _, err := vm.RunString(`
 
 throw("Test");
@@ -284,7 +284,7 @@ func Test() {
     panic(vm.ToValue("Error"))
 }
 
-vm = goja.New()
+vm = sobek.New()
 vm.Set("Test", Test)
 _, err := vm.RunString(`
 
@@ -315,7 +315,7 @@ func TestInterrupt(t *testing.T) {
     }
     `
 
-    vm := goja.New()
+    vm := sobek.New()
     time.AfterFunc(200 * time.Millisecond, func() {
         vm.Interrupt("halt")
     })
@@ -327,8 +327,3 @@ func TestInterrupt(t *testing.T) {
     // err is of type *InterruptError and its Value() method returns whatever has been passed to vm.Interrupt()
 }
 ```
-
-NodeJS Compatibility
---------------------
-
-There is a [separate project](https://github.com/dop251/goja_nodejs) aimed at providing some of the NodeJS functionality.

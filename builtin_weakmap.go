@@ -1,4 +1,4 @@
-package goja
+package sobek
 
 type weakMap uint64
 

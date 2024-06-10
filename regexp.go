@@ -1,9 +1,9 @@
-package goja
+package sobek
 
 import (
 	"fmt"
 	"github.com/dlclark/regexp2"
-	"github.com/dop251/goja/unistring"
+	"github.com/grafana/sobek/unistring"
 	"io"
 	"regexp"
 	"sort"

@@ -1,11 +1,11 @@
 # parser
 --
-    import "github.com/dop251/goja/parser"
+    import "github.com/grafana/sobek/parser"
 
 Package parser implements a parser for JavaScript. Borrowed from https://github.com/robertkrimen/otto/tree/master/parser
 
     import (
-        "github.com/dop251/goja/parser"
+        "github.com/grafana/sobek/parser"
     )
 
 Parse and return an AST

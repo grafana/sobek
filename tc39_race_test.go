@@ -1,7 +1,7 @@
 //go:build race
 // +build race
 
-package goja
+package sobek
 
 import (
 	"testing"

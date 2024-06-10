@@ -1,4 +1,4 @@
-package goja
+package sobek
 
 // inspired by https://gist.github.com/orlp/3551590
 

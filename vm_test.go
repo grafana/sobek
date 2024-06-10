@@ -1,9 +1,9 @@
-package goja
+package sobek
 
 import (
-	"github.com/dop251/goja/file"
-	"github.com/dop251/goja/parser"
-	"github.com/dop251/goja/unistring"
+	"github.com/grafana/sobek/file"
+	"github.com/grafana/sobek/parser"
+	"github.com/grafana/sobek/unistring"
 	"testing"
 )
 

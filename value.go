@@ -1,4 +1,4 @@
-package goja
+package sobek
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"unsafe"
 
-	"github.com/dop251/goja/ftoa"
-	"github.com/dop251/goja/unistring"
+	"github.com/grafana/sobek/ftoa"
+	"github.com/grafana/sobek/unistring"
 )
 
 var (

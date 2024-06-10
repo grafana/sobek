@@ -1,10 +1,10 @@
-package goja
+package sobek
 
 import (
 	"fmt"
 	"reflect"
 
-	"github.com/dop251/goja/unistring"
+	"github.com/grafana/sobek/unistring"
 )
 
 // Proxy is a Go wrapper around ECMAScript Proxy. Calling Runtime.ToValue() on it

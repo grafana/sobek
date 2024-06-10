@@ -1,10 +1,10 @@
-package goja
+package sobek
 
 import (
 	"reflect"
 	"strconv"
 
-	"github.com/dop251/goja/unistring"
+	"github.com/grafana/sobek/unistring"
 )
 
 type objectGoArrayReflect struct {
