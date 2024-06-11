@@ -1,4 +1,4 @@
-package goja
+package sobek
 
 func (r *Runtime) booleanproto_toString(call FunctionCall) Value {
 	var b bool

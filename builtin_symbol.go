@@ -1,6 +1,6 @@
-package goja
+package sobek
 
-import "github.com/dop251/goja/unistring"
+import "github.com/grafana/sobek/unistring"
 
 var (
 	SymHasInstance        = newSymbol(asciiString("Symbol.hasInstance"))

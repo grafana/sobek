@@ -1,8 +1,8 @@
-package goja
+package sobek
 
 import (
 	"errors"
-	"github.com/dop251/goja/unistring"
+	"github.com/grafana/sobek/unistring"
 	"io"
 	"math"
 	"regexp"

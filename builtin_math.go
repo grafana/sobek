@@ -1,4 +1,4 @@
-package goja
+package sobek
 
 import (
 	"math"

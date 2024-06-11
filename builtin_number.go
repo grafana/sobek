@@ -1,10 +1,10 @@
-package goja
+package sobek
 
 import (
 	"math"
 	"sync"
 
-	"github.com/dop251/goja/ftoa"
+	"github.com/grafana/sobek/ftoa"
 )
 
 func (r *Runtime) toNumber(v Value) Value {

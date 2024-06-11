@@ -1,4 +1,4 @@
-package goja
+package sobek
 
 import (
 	"errors"
@@ -293,7 +293,7 @@ func (r *Runtime) executeAsyncModule(state *evaluationState, c CyclicModuleInsta
 		r.asyncModuleExecutionFulfilled(state, c)
 		return nil
 	}), r.ToValue(func(call FunctionCall) Value {
-		// we use this signature so that goja doesn't try to infer types and wrap them
+		// we use this signature so that sobek doesn't try to infer types and wrap them
 		err := call.Argument(0)
 		r.asyncModuleExecutionRejected(state, c, err)
 		return nil

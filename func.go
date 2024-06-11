@@ -1,10 +1,10 @@
-package goja
+package sobek
 
 import (
 	"fmt"
 	"reflect"
 
-	"github.com/dop251/goja/unistring"
+	"github.com/grafana/sobek/unistring"
 )
 
 type resultType uint8

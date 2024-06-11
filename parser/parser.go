@@ -2,7 +2,7 @@
 Package parser implements a parser for JavaScript.
 
 	import (
-	    "github.com/dop251/goja/parser"
+	    "github.com/grafana/sobek/parser"
 	)
 
 Parse and return an AST
@@ -38,10 +38,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/dop251/goja/ast"
-	"github.com/dop251/goja/file"
-	"github.com/dop251/goja/token"
-	"github.com/dop251/goja/unistring"
+	"github.com/grafana/sobek/ast"
+	"github.com/grafana/sobek/file"
+	"github.com/grafana/sobek/token"
+	"github.com/grafana/sobek/unistring"
 )
 
 // A Mode value is a set of flags (or 0). They control optional parser functionality.

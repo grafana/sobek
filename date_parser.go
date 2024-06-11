@@ -1,4 +1,4 @@
-package goja
+package sobek
 
 // This is a slightly modified version of the standard Go parser to make it more compatible with ECMAScript 5.1
 // Changes:

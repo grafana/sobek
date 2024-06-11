@@ -1,4 +1,4 @@
-package goja_test // this is on purpose in a separate package
+package sobek_test // this is on purpose in a separate package
 
 import (
 	"fmt"
@@ -10,26 +10,26 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 )
 
 type simpleComboResolver struct {
 	mu           sync.Mutex
 	cache        map[string]cacheElement
-	reverseCache map[goja.ModuleRecord]string
+	reverseCache map[sobek.ModuleRecord]string
 	fs           fs.FS
-	custom       func(interface{}, string) (goja.ModuleRecord, error)
+	custom       func(interface{}, string) (sobek.ModuleRecord, error)
 }
 type cacheElement struct {
-	m   goja.ModuleRecord
+	m   sobek.ModuleRecord
 	err error
 }
 
 func newSimpleComboResolver() *simpleComboResolver {
-	return &simpleComboResolver{cache: make(map[string]cacheElement), reverseCache: make(map[goja.ModuleRecord]string)}
+	return &simpleComboResolver{cache: make(map[string]cacheElement), reverseCache: make(map[sobek.ModuleRecord]string)}
 }
 
-func (s *simpleComboResolver) resolve(referencingScriptOrModule interface{}, specifier string) (goja.ModuleRecord, error) {
+func (s *simpleComboResolver) resolve(referencingScriptOrModule interface{}, specifier string) (sobek.ModuleRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	k, ok := s.cache[specifier]
@@ -46,7 +46,7 @@ func (s *simpleComboResolver) resolve(referencingScriptOrModule interface{}, spe
 		s.cache[specifier] = cacheElement{err: err}
 		return nil, err
 	}
-	p, err := goja.ParseModule(specifier, string(b), s.resolve)
+	p, err := sobek.ParseModule(specifier, string(b), s.resolve)
 	if err != nil {
 		s.cache[specifier] = cacheElement{err: err}
 		return nil, err
@@ -64,7 +64,7 @@ type unresolvedBinding struct {
 func TestNotSourceModulesBigTest(t *testing.T) {
 	t.Parallel()
 	resolver := newSimpleComboResolver()
-	resolver.custom = func(_ interface{}, specifier string) (goja.ModuleRecord, error) {
+	resolver.custom = func(_ interface{}, specifier string) (sobek.ModuleRecord, error) {
 		switch specifier {
 		case "custom:coolstuff":
 			return &simpleModuleImpl{}, nil
@@ -120,15 +120,15 @@ func TestNotSourceModulesBigTest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got error %s", err)
 	}
-	p := m.(*goja.SourceTextModuleRecord)
+	p := m.(*sobek.SourceTextModuleRecord)
 
 	err = p.Link()
 	if err != nil {
 		t.Fatalf("got error %s", err)
 	}
-	vm := goja.New()
+	vm := sobek.New()
 	promise := vm.CyclicModuleRecordEvaluate(p, resolver.resolve)
-	if promise.State() != goja.PromiseStateFulfilled {
+	if promise.State() != sobek.PromiseStateFulfilled {
 		err := promise.Result().Export().(error)
 		t.Fatalf("got error %s", err)
 	}
@@ -140,7 +140,7 @@ func TestNotSourceModulesBigTest(t *testing.T) {
 func TestNotSourceModulesBigTestDynamicImport(t *testing.T) {
 	t.Parallel()
 	resolver := newSimpleComboResolver()
-	resolver.custom = func(_ interface{}, specifier string) (goja.ModuleRecord, error) {
+	resolver.custom = func(_ interface{}, specifier string) (sobek.ModuleRecord, error) {
 		switch specifier {
 		case "custom:coolstuff":
 			return &simpleModuleImpl{}, nil
@@ -199,17 +199,17 @@ func TestNotSourceModulesBigTestDynamicImport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got error %s", err)
 	}
-	p := m.(*goja.SourceTextModuleRecord)
+	p := m.(*sobek.SourceTextModuleRecord)
 	err = p.Link()
 	if err != nil {
 		t.Fatalf("got error %s", err)
 	}
-	vm := goja.New()
+	vm := sobek.New()
 	eventLoopQueue := make(chan func(), 2) // the most basic and likely buggy event loop
-	vm.SetPromiseRejectionTracker(func(p *goja.Promise, operation goja.PromiseRejectionOperation) {
+	vm.SetPromiseRejectionTracker(func(p *sobek.Promise, operation sobek.PromiseRejectionOperation) {
 		t.Fatal(p.Result())
 	})
-	vm.SetImportModuleDynamically(func(referencingScriptOrModule interface{}, specifierValue goja.Value, promiseCapability interface{}) {
+	vm.SetImportModuleDynamically(func(referencingScriptOrModule interface{}, specifierValue sobek.Value, promiseCapability interface{}) {
 		specifier := specifierValue.String()
 		go func() {
 			m, err := resolver.resolve(referencingScriptOrModule, specifier)
@@ -222,7 +222,7 @@ func TestNotSourceModulesBigTestDynamicImport(t *testing.T) {
 	})
 	promise := vm.CyclicModuleRecordEvaluate(p, resolver.resolve)
 	// TODO fix
-	if promise.State() != goja.PromiseStateFulfilled {
+	if promise.State() != sobek.PromiseStateFulfilled {
 		err := promise.Result().Export().(error)
 		t.Fatalf("got error %s", err)
 	}
@@ -246,16 +246,16 @@ func TestNotSourceModulesBigTestDynamicImport(t *testing.T) {
 // START of simple module implementation
 type simpleModuleImpl struct{}
 
-var _ goja.ModuleRecord = &simpleModuleImpl{}
+var _ sobek.ModuleRecord = &simpleModuleImpl{}
 
 func (s *simpleModuleImpl) Link() error {
 	// this does nothing on this
 	return nil
 }
 
-func (s *simpleModuleImpl) ResolveExport(exportName string, resolveset ...goja.ResolveSetElement) (*goja.ResolvedBinding, bool) {
+func (s *simpleModuleImpl) ResolveExport(exportName string, resolveset ...sobek.ResolveSetElement) (*sobek.ResolvedBinding, bool) {
 	if exportName == "coolStuff" {
-		return &goja.ResolvedBinding{
+		return &sobek.ResolvedBinding{
 			BindingName: exportName,
 			Module:      s,
 		}, false
@@ -263,21 +263,21 @@ func (s *simpleModuleImpl) ResolveExport(exportName string, resolveset ...goja.R
 	return nil, false
 }
 
-func (s *simpleModuleImpl) Evaluate(rt *goja.Runtime) *goja.Promise {
+func (s *simpleModuleImpl) Evaluate(rt *sobek.Runtime) *sobek.Promise {
 	p, res, _ := rt.NewPromise()
 	res(&simpleModuleInstanceImpl{rt: rt})
 	return p
 }
 
-func (s *simpleModuleImpl) GetExportedNames(records ...goja.ModuleRecord) []string {
+func (s *simpleModuleImpl) GetExportedNames(records ...sobek.ModuleRecord) []string {
 	return []string{"coolStuff"}
 }
 
 type simpleModuleInstanceImpl struct {
-	rt *goja.Runtime
+	rt *sobek.Runtime
 }
 
-func (si *simpleModuleInstanceImpl) GetBindingValue(exportName string) goja.Value {
+func (si *simpleModuleInstanceImpl) GetBindingValue(exportName string) sobek.Value {
 	if exportName == "coolStuff" {
 		return si.rt.ToValue(5)
 	}
@@ -288,16 +288,16 @@ func (si *simpleModuleInstanceImpl) GetBindingValue(exportName string) goja.Valu
 type cyclicModuleImpl struct {
 	requestedModules []string
 	exports          map[string]unresolvedBinding
-	resolve          goja.HostResolveImportedModuleFunc
+	resolve          sobek.HostResolveImportedModuleFunc
 }
 
-var _ goja.CyclicModuleRecord = &cyclicModuleImpl{}
+var _ sobek.CyclicModuleRecord = &cyclicModuleImpl{}
 
 func (s *cyclicModuleImpl) InitializeEnvironment() error {
 	return nil
 }
 
-func (s *cyclicModuleImpl) Instantiate(_ *goja.Runtime) (goja.CyclicModuleInstance, error) {
+func (s *cyclicModuleImpl) Instantiate(_ *sobek.Runtime) (sobek.CyclicModuleInstance, error) {
 	return &cyclicModuleInstanceImpl{module: s}, nil
 }
 
@@ -310,11 +310,11 @@ func (s *cyclicModuleImpl) Link() error {
 	return nil
 }
 
-func (s *cyclicModuleImpl) Evaluate(rt *goja.Runtime) *goja.Promise {
+func (s *cyclicModuleImpl) Evaluate(rt *sobek.Runtime) *sobek.Promise {
 	return rt.CyclicModuleRecordEvaluate(s, s.resolve)
 }
 
-func (s *cyclicModuleImpl) ResolveExport(exportName string, resolveset ...goja.ResolveSetElement) (*goja.ResolvedBinding, bool) {
+func (s *cyclicModuleImpl) ResolveExport(exportName string, resolveset ...sobek.ResolveSetElement) (*sobek.ResolvedBinding, bool) {
 	b, ok := s.exports[exportName]
 	if !ok {
 		return nil, false
@@ -325,13 +325,13 @@ func (s *cyclicModuleImpl) ResolveExport(exportName string, resolveset ...goja.R
 		panic(err)
 	}
 
-	return &goja.ResolvedBinding{
+	return &sobek.ResolvedBinding{
 		Module:      m,
 		BindingName: b.bidning,
 	}, false
 }
 
-func (s *cyclicModuleImpl) GetExportedNames(records ...goja.ModuleRecord) []string {
+func (s *cyclicModuleImpl) GetExportedNames(records ...sobek.ModuleRecord) []string {
 	result := make([]string, len(s.exports))
 	for k := range s.exports {
 		result = append(result, k)
@@ -341,7 +341,7 @@ func (s *cyclicModuleImpl) GetExportedNames(records ...goja.ModuleRecord) []stri
 }
 
 type cyclicModuleInstanceImpl struct {
-	rt     *goja.Runtime
+	rt     *sobek.Runtime
 	module *cyclicModuleImpl
 }
 
@@ -349,12 +349,12 @@ func (si *cyclicModuleInstanceImpl) HasTLA() bool {
 	return false
 }
 
-func (si *cyclicModuleInstanceImpl) ExecuteModule(rt *goja.Runtime, res, rej func(interface{})) (goja.CyclicModuleInstance, error) {
+func (si *cyclicModuleInstanceImpl) ExecuteModule(rt *sobek.Runtime, res, rej func(interface{})) (sobek.CyclicModuleInstance, error) {
 	si.rt = rt
 	return si, nil
 }
 
-func (si *cyclicModuleInstanceImpl) GetBindingValue(exportName string) goja.Value {
+func (si *cyclicModuleInstanceImpl) GetBindingValue(exportName string) sobek.Value {
 	b, ambigious := si.module.ResolveExport(exportName)
 	if ambigious || b == nil {
 		panic("fix this")
@@ -389,19 +389,19 @@ func TestSourceMetaImport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("got error %s", err)
 	}
-	p := m.(*goja.SourceTextModuleRecord)
+	p := m.(*sobek.SourceTextModuleRecord)
 
 	err = p.Link()
 	if err != nil {
 		t.Fatalf("got error %s", err)
 	}
-	vm := goja.New()
-	vm.SetGetImportMetaProperties(func(m goja.ModuleRecord) []goja.MetaProperty {
+	vm := sobek.New()
+	vm.SetGetImportMetaProperties(func(m sobek.ModuleRecord) []sobek.MetaProperty {
 		specifier, ok := resolver.reverseCache[m]
 		if !ok {
 			panic("we got import.meta for module that wasn't imported")
 		}
-		return []goja.MetaProperty{
+		return []sobek.MetaProperty{
 			{
 				Key:   "url",
 				Value: vm.ToValue("file:///" + specifier),
@@ -409,7 +409,7 @@ func TestSourceMetaImport(t *testing.T) {
 		}
 	})
 	promise := m.Evaluate(vm)
-	if promise.State() != goja.PromiseStateFulfilled {
+	if promise.State() != sobek.PromiseStateFulfilled {
 		err := promise.Result().Export().(error)
 		t.Fatalf("got error %s", err)
 	}
