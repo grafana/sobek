@@ -2,7 +2,7 @@ module github.com/grafana/sobek
 
 go 1.20
 
-require github.com/dop251/goja v0.0.0-20240516125602-ccbae20bcec2
+require github.com/dop251/goja v0.0.0-20240610225006-393f6d42497b
 
 require (
 	github.com/dlclark/regexp2 v1.7.0 // indirect
