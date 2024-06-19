@@ -164,6 +164,33 @@ func importEntriesFromAst(declarations []*ast.ImportDeclaration) ([]importEntry,
 	return result, nil
 }
 
+func exportEntryFromIdentifier(id *ast.Identifier, lex bool) exportEntry {
+	name := id.Name.String()
+	return exportEntry{localName: name, exportName: name, lex: lex}
+}
+
+func exportEntriesFromObjectPatter(op *ast.ObjectPattern, lex bool) []exportEntry {
+	result := make([]exportEntry, 0, len(op.Properties))
+	for _, p := range op.Properties {
+		switch p := p.(type) {
+		case *ast.PropertyShort:
+			name := p.Name.Name.String()
+			result = append(result, exportEntry{
+				localName:  name,
+				exportName: name,
+				lex:        lex,
+			})
+		case *ast.PropertyKeyed:
+			panic("exported of keyed destructuring is not supported at this time.")
+		case *ast.SpreadElement:
+			panic("exported of spread element destructuring is not supported at this time.")
+		default:
+			panic("exported of destructing with unknown type is not supported at this time.")
+		}
+	}
+	return result
+}
+
 func exportEntriesFromAst(declarations []*ast.ExportDeclaration) []exportEntry {
 	var result []exportEntry
 	for _, exportDeclaration := range declarations {
@@ -194,30 +221,25 @@ func exportEntriesFromAst(declarations []*ast.ExportDeclaration) []exportEntry {
 			}
 		} else if variableDeclaration := exportDeclaration.Variable; variableDeclaration != nil {
 			for _, l := range variableDeclaration.List {
-				id, ok := l.Target.(*ast.Identifier)
-				if !ok {
-					panic("target wasn;t identifier")
+				switch i := l.Target.(type) {
+				case *ast.Identifier:
+					result = append(result, exportEntryFromIdentifier(i, false))
+				case *ast.ObjectPattern:
+					result = append(result, exportEntriesFromObjectPatter(i, false)...)
+				default:
+					panic("target for variable declaration export isn't supported. this is sobek bug.")
 				}
-				result = append(result, exportEntry{
-					localName:  id.Name.String(),
-					exportName: id.Name.String(),
-					lex:        false,
-				})
-
 			}
 		} else if LexicalDeclaration := exportDeclaration.LexicalDeclaration; LexicalDeclaration != nil {
 			for _, l := range LexicalDeclaration.List {
-
-				id, ok := l.Target.(*ast.Identifier)
-				if !ok {
-					panic("target wasn;t identifier")
+				switch i := l.Target.(type) {
+				case *ast.Identifier:
+					result = append(result, exportEntryFromIdentifier(i, true))
+				case *ast.ObjectPattern:
+					result = append(result, exportEntriesFromObjectPatter(i, true)...)
+				default:
+					panic("target for lexical declaration export isn't supported. this is sobek bug.")
 				}
-				result = append(result, exportEntry{
-					localName:  id.Name.String(),
-					exportName: id.Name.String(),
-					lex:        true,
-				})
-
 			}
 		} else if hoistable := exportDeclaration.HoistableDeclaration; hoistable != nil {
 			localName := "default"
@@ -350,18 +372,19 @@ func ModuleFromAST(body *ast.Program, resolveModule HostResolveImportedModuleFun
 	exportEntries := exportEntriesFromAst(body.ExportEntries)
 	for _, ee := range exportEntries {
 		if ee.moduleRequest == "" { // technically nil
-			if ie, ok := findImportByLocalName(importEntries, ee.localName); !ok {
+			ie, ok := findImportByLocalName(importEntries, ee.localName)
+			if !ok {
+				localExportEntries = append(localExportEntries, ee)
+				continue
+			}
+			if ie.importName == "*" {
 				localExportEntries = append(localExportEntries, ee)
 			} else {
-				if ie.importName == "*" {
-					localExportEntries = append(localExportEntries, ee)
-				} else {
-					indirectExportEntries = append(indirectExportEntries, exportEntry{
-						moduleRequest: ie.moduleRequest,
-						importName:    ie.importName,
-						exportName:    ee.exportName,
-					})
-				}
+				indirectExportEntries = append(indirectExportEntries, exportEntry{
+					moduleRequest: ie.moduleRequest,
+					importName:    ie.importName,
+					exportName:    ee.exportName,
+				})
 			}
 		} else {
 			if ee.importName == "*" && ee.exportName == "" {

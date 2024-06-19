@@ -28,6 +28,16 @@ func TestSimpleModule(t *testing.T) {
 			`,
 			"dep.js": `export function b() { return 5 };`,
 		},
+		"var export destructuring": {
+			"a.js": `
+				import { b } from "dep.js";
+				eval("globalThis.s = b()");
+			`,
+			"dep.js": `
+				const a = { b: function() {return 5 } };
+				export var { b } = a;
+			`,
+		},
 		"let export": {
 			"a.js": `
 				import { b } from "dep.js";
@@ -41,6 +51,16 @@ func TestSimpleModule(t *testing.T) {
 				eval("globalThis.s = b()");
 			`,
 			"dep.js": `export let b = function() {return 5 };`,
+		},
+		"let export destructuring": {
+			"a.js": `
+				import { b } from "dep.js";
+				eval("globalThis.s = b()");
+			`,
+			"dep.js": `
+				const a = { b: function() {return 5 } };
+				export let { b } = a;
+			`,
 		},
 		"const export": {
 			"a.js": `
