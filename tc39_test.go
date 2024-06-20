@@ -212,20 +212,6 @@ var (
 		// Skip due to regexp named groups
 		"test/built-ins/String/prototype/replaceAll/searchValue-replacer-RegExp-call.js": true,
 
-		// some export syntax that isn't supported
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-this.js":             true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-null.js":             true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-identifier.js":       true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-template-literal.js": true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-regexp.js":           true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-new-expr.js":         true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-literal-number.js":   true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-obj-literal.js":      true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-literal-string.js":   true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-nested.js":           true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-func-expression.js":  true,
-		"test/language/module-code/top-level-await/syntax/export-var-await-expr-array-literal.js":    true,
-
 		// uncathegorized yet
 		"test/built-ins/TypedArrayConstructors/ctors/no-species.js":                                            true,
 		"test/built-ins/TypedArray/prototype/set/array-arg-targetbuffer-detached-on-get-src-value-no-throw.js": true,
