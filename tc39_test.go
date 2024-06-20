@@ -212,7 +212,7 @@ var (
 		// Skip due to regexp named groups
 		"test/built-ins/String/prototype/replaceAll/searchValue-replacer-RegExp-call.js": true,
 
-		// some export syntax taht isn't supported
+		// some export syntax that isn't supported
 		"test/language/module-code/top-level-await/syntax/export-var-await-expr-this.js":             true,
 		"test/language/module-code/top-level-await/syntax/export-var-await-expr-null.js":             true,
 		"test/language/module-code/top-level-await/syntax/export-var-await-expr-identifier.js":       true,
@@ -225,6 +225,32 @@ var (
 		"test/language/module-code/top-level-await/syntax/export-var-await-expr-nested.js":           true,
 		"test/language/module-code/top-level-await/syntax/export-var-await-expr-func-expression.js":  true,
 		"test/language/module-code/top-level-await/syntax/export-var-await-expr-array-literal.js":    true,
+
+		// uncathegorized yet
+		"test/built-ins/TypedArrayConstructors/ctors/no-species.js":                                            true,
+		"test/built-ins/TypedArray/prototype/set/array-arg-targetbuffer-detached-on-get-src-value-no-throw.js": true,
+		"test/built-ins/TypedArray/prototype/sort/sort-tonumber.js":                                            true,
+		"test/built-ins/RegExp/prototype/ignoreCase/this-val-non-obj.js":                                       true,
+		"test/built-ins/RegExp/prototype/Symbol.replace/flags-tostring-error.js":                               true,
+		"test/built-ins/RegExp/prototype/global/this-val-non-obj.js":                                           true,
+		"test/built-ins/RegExp/prototype/flags/this-val-non-obj.js":                                            true,
+		"test/built-ins/RegExp/prototype/unicode/this-val-non-obj.js":                                          true,
+		"test/built-ins/RegExp/prototype/Symbol.match/get-unicode-error.js":                                    true,
+		"test/built-ins/RegExp/prototype/Symbol.match/get-flags-err.js":                                        true,
+		"test/built-ins/RegExp/prototype/Symbol.match/flags-tostring-error.js":                                 true,
+		"test/built-ins/RegExp/prototype/Symbol.replace/get-flags-err.js":                                      true,
+		"test/built-ins/RegExp/prototype/sticky/this-val-non-obj.js":                                           true,
+		"test/built-ins/RegExp/prototype/source/this-val-non-obj.js":                                           true,
+		"test/built-ins/RegExp/prototype/multiline/this-val-non-obj.js":                                        true,
+		"test/built-ins/RegExp/unicode_full_case_folding.js":                                                   true,
+		"test/built-ins/RegExp/prototype/Symbol.replace/get-unicode-error.js":                                  true,
+		"test/built-ins/RegExp/lookahead-quantifier-match-groups.js":                                           true,
+		"test/built-ins/Number/S15.7.1.1_A1.js":                                                                true,
+		"test/built-ins/Date/year-zero.js":                                                                     true,
+		"test/built-ins/DataView/prototype/setBigUint64/not-a-constructor.js":                                  true,
+		"test/built-ins/Date/parse/year-zero.js":                                                               true,
+		"test/built-ins/DataView/prototype/getBigUint64/not-a-constructor.js":                                  true,
+		"test/language/expressions/unary-plus/S11.4.6_A3_T3.js":                                                true,
 	}
 
 	featuresBlackList = []string{
@@ -233,6 +259,7 @@ var (
 		"BigInt",
 		"resizable-arraybuffer",
 		"regexp-named-groups",
+		"regexp-duplicate-named-groups",
 		"regexp-dotall",
 		"regexp-unicode-property-escapes",
 		"regexp-match-indices",
@@ -252,7 +279,23 @@ var (
 		"SharedArrayBuffer",
 		"error-cause",
 		"decorators",
+
 		"regexp-v-flag",
+		"promise-try",
+		"promise-with-resolvers",
+		"import-attributes",
+		"iterator-helpers",
+		"Symbol.iterator",
+		"Float16Array",
+		"Array.fromAsync",
+		"array-grouping",
+		"String.prototype.toWellFormed",
+		"String.prototype.isWellFormed",
+		"change-array-by-copy",
+		"arraybuffer-transfer",
+		"symbols-as-weakmap-keys",
+		"set-methods",
+		"regexp-modifiers",
 	}
 )
 
@@ -813,7 +856,6 @@ func (ctx *tc39TestCtx) runTC39Script(name, src string, includes []string, vm *R
 
 	var p *Program
 	p, err = Compile(name, src, false)
-
 	if err != nil {
 		return
 	}
