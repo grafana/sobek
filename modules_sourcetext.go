@@ -451,11 +451,12 @@ func (module *SourceTextModuleRecord) getExportedNamesWithotStars() []string {
 	return exportedNames
 }
 
-func (module *SourceTextModuleRecord) GetExportedNames(exportStarSet ...ModuleRecord) []string {
+func (module *SourceTextModuleRecord) GetExportedNames(callback func([]string), exportStarSet ...ModuleRecord) bool {
 	for _, el := range exportStarSet {
 		if el == module { // better check
 			// TODO assert
-			return nil
+			callback(nil)
+			return true
 		}
 	}
 	exportStarSet = append(exportStarSet, module)
@@ -466,22 +467,63 @@ func (module *SourceTextModuleRecord) GetExportedNames(exportStarSet ...ModuleRe
 	for _, e := range module.indirectExportEntries {
 		exportedNames = append(exportedNames, e.exportName)
 	}
-	for _, e := range module.starExportEntries {
+	if len(module.starExportEntries) == 0 {
+		callback(exportedNames)
+		return true
+	}
+
+	for i, e := range module.starExportEntries {
 		requestedModule, err := module.hostResolveImportedModule(module, e.moduleRequest)
 		if err != nil {
 			panic(err)
 		}
-		starNames := requestedModule.GetExportedNames(exportStarSet...)
-
-		for _, n := range starNames {
-			if n != "default" {
-				// TODO check if n i exportedNames and don't include it
-				exportedNames = append(exportedNames, n)
+		ch := make(chan struct{})
+		newCallback := func(names []string) {
+			for _, n := range names {
+				if n != "default" {
+					// TODO check if n i exportedNames and don't include it
+					exportedNames = append(exportedNames, n)
+				}
 			}
+			close(ch)
+		}
+
+		isSync := requestedModule.GetExportedNames(newCallback, exportStarSet...)
+		if !isSync {
+			go func() {
+				<-ch
+				module.handleAsyncGeteExportNames(exportedNames, module.starExportEntries[i:], callback, exportStarSet...)
+			}()
+			return false
 		}
 	}
+	callback(exportedNames)
+	return true
+}
 
-	return exportedNames
+func (module *SourceTextModuleRecord) handleAsyncGeteExportNames(
+	exportedNames []string, remaining []exportEntry, callback func([]string), exportStarSet ...ModuleRecord,
+) {
+	for _, e := range remaining {
+		requestedModule, err := module.hostResolveImportedModule(module, e.moduleRequest)
+		if err != nil {
+			panic(err)
+		}
+		ch := make(chan struct{})
+		newCallback := func(names []string) {
+			for _, n := range names {
+				if n != "default" {
+					// TODO check if n i exportedNames and don't include it
+					exportedNames = append(exportedNames, n)
+				}
+			}
+			close(ch)
+		}
+
+		_ = requestedModule.GetExportedNames(newCallback, exportStarSet...)
+		<-ch
+	}
+	callback(exportedNames)
 }
 
 func (module *SourceTextModuleRecord) InitializeEnvironment() (err error) {

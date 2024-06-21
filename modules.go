@@ -12,7 +12,12 @@ type HostResolveImportedModuleFunc func(referencingScriptOrModule interface{}, s
 
 // ModuleRecord is the common interface for module record as defined in the EcmaScript specification
 type ModuleRecord interface {
-	GetExportedNames(resolveset ...ModuleRecord) []string
+	// GetExportedNames gets it result on the callback and returns wether it has done so or not.
+	// This is currently a hack in order to support ModuleRecords who can not return the exported names right away.
+	// This happens when you need CommonJS modules to be importable or more accurately to use `export * as something ...`.
+	//
+	// Experimental: This is very likely to be changed in the future
+	GetExportedNames(callback func([]string), resolveset ...ModuleRecord) bool
 	ResolveExport(exportName string, resolveset ...ResolveSetElement) (*ResolvedBinding, bool)
 	Link() error
 	Evaluate(*Runtime) *Promise

@@ -269,8 +269,9 @@ func (s *simpleModuleImpl) Evaluate(rt *sobek.Runtime) *sobek.Promise {
 	return p
 }
 
-func (s *simpleModuleImpl) GetExportedNames(records ...sobek.ModuleRecord) []string {
-	return []string{"coolStuff"}
+func (s *simpleModuleImpl) GetExportedNames(callback func([]string), records ...sobek.ModuleRecord) bool {
+	callback([]string{"coolStuff"})
+	return true
 }
 
 type simpleModuleInstanceImpl struct {
@@ -331,13 +332,14 @@ func (s *cyclicModuleImpl) ResolveExport(exportName string, resolveset ...sobek.
 	}, false
 }
 
-func (s *cyclicModuleImpl) GetExportedNames(records ...sobek.ModuleRecord) []string {
+func (s *cyclicModuleImpl) GetExportedNames(callback func([]string), records ...sobek.ModuleRecord) bool {
 	result := make([]string, len(s.exports))
 	for k := range s.exports {
 		result = append(result, k)
 	}
 	sort.Strings(result)
-	return result
+	callback(result)
+	return true
 }
 
 type cyclicModuleInstanceImpl struct {
