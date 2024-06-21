@@ -1158,10 +1158,7 @@ func (self *_parser) parseExportDeclaration() *ast.ExportDeclaration {
 			exp = &ast.ExportDeclaration{
 				Idx: idx,
 				HoistableDeclaration: &ast.HoistableDeclaration{
-					FunctionDeclaration: &ast.FunctionDeclaration{
-						Function:  f,
-						IsDefault: true,
-					},
+					FunctionDeclaration: &ast.FunctionDeclaration{Function: f},
 				},
 				IsDefault: true,
 			}
@@ -1173,10 +1170,7 @@ func (self *_parser) parseExportDeclaration() *ast.ExportDeclaration {
 			exp = &ast.ExportDeclaration{
 				Idx: idx,
 				HoistableDeclaration: &ast.HoistableDeclaration{
-					FunctionDeclaration: &ast.FunctionDeclaration{
-						Function:  f,
-						IsDefault: true,
-					},
+					FunctionDeclaration: &ast.FunctionDeclaration{Function: f},
 				},
 				IsDefault: true,
 			}

@@ -487,8 +487,7 @@ type (
 	}
 
 	FunctionDeclaration struct {
-		Function  *FunctionLiteral
-		IsDefault bool // TODO figure out how to not have to that
+		Function *FunctionLiteral
 	}
 
 	ImportDeclaration struct {

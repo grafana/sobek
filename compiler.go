@@ -1270,9 +1270,6 @@ func (c *compiler) createFunctionBindings(funcs []*ast.FunctionDeclaration) {
 			for _, decl := range funcs {
 				if !decl.Function.Async && !decl.Function.Generator {
 					s.bindNameLexical(decl.Function.Name.Name, false, int(decl.Function.Name.Idx1())-1)
-					if decl.IsDefault && decl.Function.Name.Name != "default" {
-						s.bindNameLexical("default", unique, int(decl.Function.Name.Idx1())-1)
-					}
 				} else {
 					hasNonStandard = true
 				}
@@ -1281,18 +1278,12 @@ func (c *compiler) createFunctionBindings(funcs []*ast.FunctionDeclaration) {
 				for _, decl := range funcs {
 					if decl.Function.Async || decl.Function.Generator {
 						s.bindNameLexical(decl.Function.Name.Name, true, int(decl.Function.Name.Idx1())-1)
-						if decl.IsDefault && decl.Function.Name.Name != "default" {
-							s.bindNameLexical("default", unique, int(decl.Function.Name.Idx1())-1)
-						}
 					}
 				}
 			}
 		} else {
 			for _, decl := range funcs {
 				s.bindNameLexical(decl.Function.Name.Name, true, int(decl.Function.Name.Idx1())-1)
-				if decl.IsDefault && decl.Function.Name.Name != "default" {
-					s.bindNameLexical("default", unique, int(decl.Function.Name.Idx1())-1)
-				}
 			}
 		}
 	} else {
@@ -1468,6 +1459,15 @@ func (c *compiler) compileLexicalDeclarations(list []ast.Statement, scopeDeclare
 				} else {
 					cls := lex.ClassDeclaration
 					c.createLexicalIdBinding(cls.Class.Name.Name, false, int(cls.Class.Name.Idx)-1)
+				}
+			} else if lex.IsDefault {
+				switch {
+				case lex.HoistableDeclaration != nil:
+					s := c.scope
+
+					unique := !s.isFunction() && !s.variable && s.strict
+
+					s.bindNameLexical("default", unique, int(lex.HoistableDeclaration.FunctionDeclaration.Function.Name.Idx1())-1)
 				}
 			}
 		}
