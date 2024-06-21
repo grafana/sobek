@@ -40,7 +40,6 @@ func (s *SourceTextModuleInstance) ExecuteModule(rt *Runtime, res, rej func(inte
 		case PromiseStateRejected:
 			return nil, rt.vm.exceptionFromValue(promise.result)
 		case PromiseStatePending:
-			// TODO !??!?
 			panic("sobek bug where an sync module was not executed synchronously")
 		default:
 			panic("Somehow promise from a module execution is in invalid state")
@@ -70,7 +69,7 @@ func (s *SourceTextModuleInstance) GetBindingValue(name string) Value {
 }
 
 func (s *SourceTextModuleInstance) HasTLA() bool {
-	return s.moduleRecord.hasTLA // TODO implement when TLA is added
+	return s.moduleRecord.hasTLA
 }
 
 type SourceTextModuleRecord struct {
@@ -102,6 +101,7 @@ type exportEntry struct {
 	moduleRequest string
 	importName    string
 	localName     string
+	offset        int
 
 	// not standard
 	lex bool
@@ -179,6 +179,7 @@ func exportEntriesFromObjectPatter(op *ast.ObjectPattern, lex bool) []exportEntr
 				localName:  name,
 				exportName: name,
 				lex:        lex,
+				offset:     int(op.Idx0()),
 			})
 		case *ast.PropertyKeyed:
 			panic("exported of keyed destructuring is not supported at this time.")
@@ -201,6 +202,7 @@ func exportEntriesFromAst(declarations []*ast.ExportDeclaration) []exportEntry {
 					result = append(result, exportEntry{
 						localName:  spec.IdentifierName.String(),
 						exportName: spec.Alias.String(),
+						offset:     int(exportDeclaration.Idx0()),
 					})
 				}
 			} else if exportFromClause.IsWildcard {
@@ -209,11 +211,13 @@ func exportEntriesFromAst(declarations []*ast.ExportDeclaration) []exportEntry {
 						exportName:    exportFromClause.Alias.String(),
 						importName:    "*",
 						moduleRequest: from.ModuleSpecifier.String(),
+						offset:        int(exportDeclaration.Idx0()),
 					})
 				} else {
 					result = append(result, exportEntry{
 						exportName: exportFromClause.Alias.String(),
 						importName: "*",
+						offset:     int(exportDeclaration.Idx0()),
 					})
 				}
 			} else {
@@ -256,18 +260,20 @@ func exportEntriesFromAst(declarations []*ast.ExportDeclaration) []exportEntry {
 				localName:  localName,
 				exportName: exportName,
 				lex:        true,
+				offset:     int(exportDeclaration.Idx0()),
 			})
 		} else if fromClause := exportDeclaration.FromClause; fromClause != nil {
 			if namedExports := exportDeclaration.NamedExports; namedExports != nil {
 				for _, spec := range namedExports.ExportsList {
 					alias := spec.IdentifierName.String()
-					if spec.Alias.String() != "" { // TODO fix
+					if spec.Alias != "" {
 						alias = spec.Alias.String()
 					}
 					result = append(result, exportEntry{
 						importName:    spec.IdentifierName.String(),
 						exportName:    alias,
 						moduleRequest: fromClause.ModuleSpecifier.String(),
+						offset:        int(exportDeclaration.Idx0()),
 					})
 				}
 			} else {
@@ -276,12 +282,13 @@ func exportEntriesFromAst(declarations []*ast.ExportDeclaration) []exportEntry {
 		} else if namedExports := exportDeclaration.NamedExports; namedExports != nil {
 			for _, spec := range namedExports.ExportsList {
 				alias := spec.IdentifierName.String()
-				if spec.Alias.String() != "" { // TODO fix
+				if spec.Alias != "" {
 					alias = spec.Alias.String()
 				}
 				result = append(result, exportEntry{
 					localName:  spec.IdentifierName.String(),
 					exportName: alias,
+					offset:     int(exportDeclaration.Idx0()),
 				})
 			}
 		} else if exportDeclaration.AssignExpression != nil {
@@ -289,6 +296,7 @@ func exportEntriesFromAst(declarations []*ast.ExportDeclaration) []exportEntry {
 				exportName: "default",
 				localName:  "default",
 				lex:        true,
+				offset:     int(exportDeclaration.Idx0()),
 			})
 		} else if exportDeclaration.ClassDeclaration != nil {
 			cls := exportDeclaration.ClassDeclaration.Class
@@ -297,12 +305,14 @@ func exportEntriesFromAst(declarations []*ast.ExportDeclaration) []exportEntry {
 					exportName: "default",
 					localName:  "default",
 					lex:        true,
+					offset:     int(exportDeclaration.Idx0()),
 				})
 			} else {
 				result = append(result, exportEntry{
 					exportName: cls.Name.Name.String(),
 					localName:  cls.Name.Name.String(),
 					lex:        true,
+					offset:     int(exportDeclaration.Idx0()),
 				})
 			}
 		} else {

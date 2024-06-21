@@ -1074,8 +1074,7 @@ func (c *compiler) compileLocalExportEntry(entry exportEntry) {
 	b, ok := c.scope.boundNames[name]
 	if !ok {
 		if entry.localName != "default" {
-			// TODO fix index
-			c.throwSyntaxError(0, "exporting unknown binding: %q", name)
+			c.throwSyntaxError(entry.offset, "exporting unknown binding: %q", name)
 		}
 		b, _ = c.scope.bindName(name)
 	}
