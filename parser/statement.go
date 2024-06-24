@@ -1152,6 +1152,15 @@ func (self *_parser) parseExportDeclaration() *ast.ExportDeclaration {
 		switch self.token {
 		case token.ASYNC:
 			f := self.parseMaybeAsyncFunction(false)
+			if f == nil {
+				exp = &ast.ExportDeclaration{
+					Idx:              idx,
+					AssignExpression: self.parseAssignmentExpression(),
+					IsDefault:        true,
+				}
+				self.semicolon()
+				break
+			}
 			if f.Name == nil {
 				f.Name = &ast.Identifier{Name: unistring.String("default"), Idx: f.Idx0()}
 			}
@@ -1175,7 +1184,7 @@ func (self *_parser) parseExportDeclaration() *ast.ExportDeclaration {
 				IsDefault: true,
 			}
 		case token.CLASS:
-			decl := &ast.ExportDeclaration{
+			exp = &ast.ExportDeclaration{
 				Idx: idx,
 				ClassDeclaration: &ast.ClassDeclaration{
 					Class: self.parseClass(false),
@@ -1183,8 +1192,6 @@ func (self *_parser) parseExportDeclaration() *ast.ExportDeclaration {
 				IsDefault: true,
 			}
 			self.insertSemicolon = true
-			return decl
-
 		default:
 			exp = &ast.ExportDeclaration{
 				Idx:              idx,

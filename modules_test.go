@@ -139,6 +139,13 @@ func TestSimpleModule(t *testing.T) {
 			`,
 			"dep.js": `export default () => {return 5 };`,
 		},
+		"default export arrow async": {
+			"a.js": `
+				import b from "dep.js";
+				globalThis.s = await b();
+			`,
+			"dep.js": `export default async () => {return 5 };`,
+		},
 		"default export arrow eval": {
 			"a.js": `
 				import b from "dep.js";
