@@ -967,7 +967,6 @@ func (c *compiler) compileModule(module *SourceTextModuleRecord) {
 	c.block = &block{
 		outer: c.block,
 		typ:   blockScope,
-
 	}
 	var enter *enterBlock
 	c.emit(&enterFuncBody{
