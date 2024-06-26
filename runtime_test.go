@@ -1570,7 +1570,7 @@ func TestInterruptInWrappedFunction(t *testing.T) {
 
 func TestInterruptInWrappedFunction2(t *testing.T) {
 	rt := New()
-	// this test panics as otherwise sobek will recover and possibly loop
+	// this test panics as otherwise Sobek will recover and possibly loop
 	var called bool
 	rt.Set("v", rt.ToValue(func() {
 		if called {
@@ -1626,7 +1626,7 @@ func TestInterruptInWrappedFunction2(t *testing.T) {
 
 func TestInterruptInWrappedFunction2Recover(t *testing.T) {
 	rt := New()
-	// this test panics as otherwise sobek will recover and possibly loop
+	// this test panics as otherwise Sobek will recover and possibly loop
 	var vCalled int
 	rt.Set("v", rt.ToValue(func() {
 		if vCalled == 0 {
@@ -1685,7 +1685,7 @@ func TestInterruptInWrappedFunction2Recover(t *testing.T) {
 
 func TestInterruptInWrappedFunctionExpectInteruptError(t *testing.T) {
 	rt := New()
-	// this test panics as otherwise sobek will recover and possibly loop
+	// this test panics as otherwise Sobek will recover and possibly loop
 	rt.Set("v", rt.ToValue(func() {
 		rt.Interrupt("here is the error")
 	}))
@@ -1714,7 +1714,7 @@ func TestInterruptInWrappedFunctionExpectInteruptError(t *testing.T) {
 func TestInterruptInWrappedFunctionExpectStackOverflowError(t *testing.T) {
 	rt := New()
 	rt.SetMaxCallStackSize(5)
-	// this test panics as otherwise sobek will recover and possibly loop
+	// this test panics as otherwise Sobek will recover and possibly loop
 	rt.Set("v", rt.ToValue(func() {
 		_, err := rt.RunString(`
 		(function loop() { loop() })();
