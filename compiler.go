@@ -101,7 +101,7 @@ func (c *compiler) getScriptOrModule() interface{} {
 	if c.module != nil {
 		return c.module
 	}
-	return c.p // TODO figure comething better
+	return c.p // TODO figure something better
 }
 
 type binding struct {
@@ -961,7 +961,6 @@ func (c *compiler) compileModule(module *SourceTextModuleRecord) {
 	c.newBlockScope()
 	scope = c.scope
 	scope.funcType = funcModule
-	// scope.variable = true
 	c.emit(&enterFunc{
 		funcType: funcModule,
 	})
@@ -969,7 +968,6 @@ func (c *compiler) compileModule(module *SourceTextModuleRecord) {
 		outer: c.block,
 		typ:   blockScope,
 
-		// needResult: true,
 	}
 	var enter *enterBlock
 	c.emit(&enterFuncBody{
@@ -1055,7 +1053,7 @@ func (c *compiler) compileModule(module *SourceTextModuleRecord) {
 func (c *compiler) compileImportEntry(in importEntry) {
 	importedModule, err := c.hostResolveImportedModule(c.module, in.moduleRequest)
 	if err != nil {
-		panic(fmt.Errorf("previously resolved module returned error %w", err))
+		panic(fmt.Errorf("previously resolved module returned error: %w", err))
 	}
 	if in.importName != "*" {
 		resolution, ambiguous := importedModule.ResolveExport(in.importName)
