@@ -2248,7 +2248,6 @@ func (e *compiledClassLiteral) compileFieldsAndStaticBlocks(elements []clsElemen
 			}
 		}
 	}
-	// e.c.emit(halt)
 	if s.isDynamic() || thisBinding.useCount() > 0 {
 		if s.isDynamic() || thisBinding.inStash {
 			thisBinding.emitInitAt(1)
