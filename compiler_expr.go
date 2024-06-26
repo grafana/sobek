@@ -1991,7 +1991,6 @@ func (e *compiledClassLiteral) emitGetter(putOnStack bool) {
 					DeclarationList: elt.DeclarationList,
 				}, true)
 				f.typ = funcClsInit
-				// f.lhsName = "<static_initializer>"
 				f.homeObjOffset = 1
 				staticElements = append(staticElements, clsElement{
 					body: f,
