@@ -941,8 +941,8 @@ func ExampleRuntime_ExportTo_funcThrow() {
 
 func ExampleRuntime_ExportTo_funcVariadic() {
 	const SCRIPT = `
-	function f() {
-		return Array.prototype.join.call(arguments, ",");
+	function f(...args) {
+		return args.join("#");
 	}
 	`
 	vm := New()
@@ -957,7 +957,57 @@ func ExampleRuntime_ExportTo_funcVariadic() {
 		panic(err)
 	}
 	fmt.Println(fn("a", "b", 42))
-	// Output: a,b,42
+	// Output: a#b#42
+}
+
+func TestRuntime_ExportTo_funcVariadic(t *testing.T) {
+	const SCRIPT = `
+	function f(...args) {
+		return args.join("#");
+	}
+	`
+	vm := New()
+	_, err := vm.RunString(SCRIPT)
+	if err != nil {
+		panic(err)
+	}
+
+	t.Run("no args", func(t *testing.T) {
+		var fn func(args ...any) string
+		err = vm.ExportTo(vm.Get("f"), &fn)
+		if err != nil {
+			panic(err)
+		}
+		res := fn()
+		if res != "" {
+			t.Fatal(res)
+		}
+	})
+
+	t.Run("non-variadic args", func(t *testing.T) {
+		var fn func(firstArg any, args ...any) string
+		err = vm.ExportTo(vm.Get("f"), &fn)
+		if err != nil {
+			panic(err)
+		}
+		res := fn("first")
+		if res != "first" {
+			t.Fatal(res)
+		}
+	})
+
+	t.Run("non-variadic and variadic args", func(t *testing.T) {
+		var fn func(firstArg any, args ...any) string
+		err = vm.ExportTo(vm.Get("f"), &fn)
+		if err != nil {
+			panic(err)
+		}
+		res := fn("first", "second")
+		if res != "first#second" {
+			t.Fatal(res)
+		}
+	})
+
 }
 
 func TestRuntime_ExportToFuncFail(t *testing.T) {
@@ -1570,7 +1620,7 @@ func TestInterruptInWrappedFunction(t *testing.T) {
 
 func TestInterruptInWrappedFunction2(t *testing.T) {
 	rt := New()
-	// this test panics as otherwise sobek will recover and possibly loop
+	// this test panics as otherwise Sobek will recover and possibly loop
 	var called bool
 	rt.Set("v", rt.ToValue(func() {
 		if called {
@@ -1626,7 +1676,7 @@ func TestInterruptInWrappedFunction2(t *testing.T) {
 
 func TestInterruptInWrappedFunction2Recover(t *testing.T) {
 	rt := New()
-	// this test panics as otherwise sobek will recover and possibly loop
+	// this test panics as otherwise Sobek will recover and possibly loop
 	var vCalled int
 	rt.Set("v", rt.ToValue(func() {
 		if vCalled == 0 {
@@ -1685,7 +1735,7 @@ func TestInterruptInWrappedFunction2Recover(t *testing.T) {
 
 func TestInterruptInWrappedFunctionExpectInteruptError(t *testing.T) {
 	rt := New()
-	// this test panics as otherwise sobek will recover and possibly loop
+	// this test panics as otherwise Sobek will recover and possibly loop
 	rt.Set("v", rt.ToValue(func() {
 		rt.Interrupt("here is the error")
 	}))
@@ -1714,7 +1764,7 @@ func TestInterruptInWrappedFunctionExpectInteruptError(t *testing.T) {
 func TestInterruptInWrappedFunctionExpectStackOverflowError(t *testing.T) {
 	rt := New()
 	rt.SetMaxCallStackSize(5)
-	// this test panics as otherwise sobek will recover and possibly loop
+	// this test panics as otherwise Sobek will recover and possibly loop
 	rt.Set("v", rt.ToValue(func() {
 		_, err := rt.RunString(`
 		(function loop() { loop() })();
