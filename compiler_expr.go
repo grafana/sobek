@@ -3213,7 +3213,6 @@ func (c *compiler) compileCallee(v ast.Expression) compiledExpr {
 }
 
 func (c *compiler) compileCallExpression(v *ast.CallExpression) compiledExpr {
-	// fmt.Printf("%+v %+v %T\n", v, v.Callee, v.Callee)
 	args := make([]compiledExpr, len(v.ArgumentList))
 	isVariadic := false
 	for i, argExpr := range v.ArgumentList {

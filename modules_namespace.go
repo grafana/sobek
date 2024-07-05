@@ -177,6 +177,5 @@ func (no *namespaceObject) defineOwnPropertyStr(name unistring.String, desc Prop
 	if desc.Value != nil && desc.Value != no.getOwnPropStr(name) {
 		return returnFalse()
 	}
-	// TODO more checks
 	return true
 }

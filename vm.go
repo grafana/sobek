@@ -548,7 +548,7 @@ func (s *stash) deleteBinding(name unistring.String) {
 func (vm *vm) newStash() {
 	vm.stash = &stash{
 		outer: vm.stash,
-		vm:    vm, // TODO fix
+		vm:    vm, // NOTE(@mstoykov): it will be nice if we do not have cyclic dependency
 	}
 	vm.stashAllocs++
 }
@@ -4690,7 +4690,8 @@ var dynamicImport _loadDynamicImport
 
 func (_loadDynamicImport) exec(vm *vm) {
 	// https://262.ecma-international.org/13.0/#sec-import-call-runtime-semantics-evaluation
-	vm.push(vm.r.ToValue(func(specifier Value) Value { // TODO remove this function
+	// NOTE(@mstoykov): it will be nice if we do not use vm.r.ToValue but write it directly
+	vm.push(vm.r.ToValue(func(specifier Value) Value {
 		t := vm.r.GetActiveScriptOrModule()
 
 		pcap := vm.r.newPromiseCapability(vm.r.getPromise())

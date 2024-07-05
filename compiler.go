@@ -732,7 +732,7 @@ func (s *scope) finaliseVarAlloc(stackOffset int) (stashSize, stackSize int) {
 						case *resolveMixed:
 							i.idx = idx
 						case loadIndirect:
-							// do nothing
+							// nothing needs to be changed in this case
 						default:
 							s.c.assert(false, s.c.p.sourceOffset(pc), "Unsupported instruction for binding: %T", i)
 						}
