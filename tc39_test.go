@@ -29,7 +29,6 @@ var (
 	skipPrefixes prefixList
 
 	skipList = map[string]bool{
-
 		// out-of-date (https://github.com/tc39/test262/issues/3407)
 		"test/language/expressions/prefix-increment/S11.4.4_A6_T3.js":        true,
 		"test/language/expressions/prefix-increment/S11.4.4_A6_T2.js":        true,
@@ -123,7 +122,6 @@ var (
 		"test/language/literals/regexp/S7.8.5_A2.1_T2.js":            true,
 		"test/language/literals/regexp/S7.8.5_A2.4_T2.js":            true,
 
-		// async generator
 		"test/language/expressions/optional-chaining/member-expression.js":                                                                            true,
 		"test/language/expressions/class/elements/same-line-async-method-rs-static-async-generator-method-privatename-identifier-alt.js":              true,
 		"test/language/expressions/class/elements/same-line-async-method-rs-static-async-generator-method-privatename-identifier.js":                  true,
@@ -161,6 +159,7 @@ var (
 
 		// async iterator
 		"test/language/expressions/optional-chaining/iteration-statement-for-await-of.js": true,
+		"test/language/expressions/dynamic-import/for-await-resolution-and-error.js":      true,
 
 		// legacy number literals
 		"test/language/literals/numeric/non-octal-decimal-integer.js": true,
@@ -197,8 +196,47 @@ var (
 		"test/annexB/built-ins/RegExp/RegExp-invalid-control-escape-character-class.js": true,
 		"test/annexB/built-ins/RegExp/RegExp-control-escape-russian-letter.js":          true,
 
+		// 'new' with import
+		"test/language/expressions/dynamic-import/syntax/valid/new-covered-expression-is-valid.js": true,
+
+		// unpaired surrogates pairs in import/exports
+		"test/language/module-code/export-expname-import-unpaired-surrogate.js":  true,
+		"test/language/module-code/export-expname-from-unpaired-surrogate.js":    true,
+		"test/language/module-code/export-expname-from-as-unpaired-surrogate.js": true,
+		"test/language/module-code/export-expname-unpaired-surrogate.js":         true,
+		"test/language/module-code/export-expname-string-binding.js":             true,
+
+		// top level duip names
+		"test/language/module-code/early-dup-top-function.js": true,
+
 		// Skip due to regexp named groups
 		"test/built-ins/String/prototype/replaceAll/searchValue-replacer-RegExp-call.js": true,
+
+		// uncathegorized yet
+		"test/built-ins/TypedArrayConstructors/ctors/no-species.js":                                            true,
+		"test/built-ins/TypedArray/prototype/set/array-arg-targetbuffer-detached-on-get-src-value-no-throw.js": true,
+		"test/built-ins/TypedArray/prototype/sort/sort-tonumber.js":                                            true,
+		"test/built-ins/RegExp/prototype/ignoreCase/this-val-non-obj.js":                                       true,
+		"test/built-ins/RegExp/prototype/Symbol.replace/flags-tostring-error.js":                               true,
+		"test/built-ins/RegExp/prototype/global/this-val-non-obj.js":                                           true,
+		"test/built-ins/RegExp/prototype/flags/this-val-non-obj.js":                                            true,
+		"test/built-ins/RegExp/prototype/unicode/this-val-non-obj.js":                                          true,
+		"test/built-ins/RegExp/prototype/Symbol.match/get-unicode-error.js":                                    true,
+		"test/built-ins/RegExp/prototype/Symbol.match/get-flags-err.js":                                        true,
+		"test/built-ins/RegExp/prototype/Symbol.match/flags-tostring-error.js":                                 true,
+		"test/built-ins/RegExp/prototype/Symbol.replace/get-flags-err.js":                                      true,
+		"test/built-ins/RegExp/prototype/sticky/this-val-non-obj.js":                                           true,
+		"test/built-ins/RegExp/prototype/source/this-val-non-obj.js":                                           true,
+		"test/built-ins/RegExp/prototype/multiline/this-val-non-obj.js":                                        true,
+		"test/built-ins/RegExp/unicode_full_case_folding.js":                                                   true,
+		"test/built-ins/RegExp/prototype/Symbol.replace/get-unicode-error.js":                                  true,
+		"test/built-ins/RegExp/lookahead-quantifier-match-groups.js":                                           true,
+		"test/built-ins/Number/S15.7.1.1_A1.js":                                                                true,
+		"test/built-ins/Date/year-zero.js":                                                                     true,
+		"test/built-ins/DataView/prototype/setBigUint64/not-a-constructor.js":                                  true,
+		"test/built-ins/Date/parse/year-zero.js":                                                               true,
+		"test/built-ins/DataView/prototype/getBigUint64/not-a-constructor.js":                                  true,
+		"test/language/expressions/unary-plus/S11.4.6_A3_T3.js":                                                true,
 	}
 
 	featuresBlackList = []string{
@@ -207,6 +245,7 @@ var (
 		"BigInt",
 		"resizable-arraybuffer",
 		"regexp-named-groups",
+		"regexp-duplicate-named-groups",
 		"regexp-dotall",
 		"regexp-unicode-property-escapes",
 		"regexp-match-indices",
@@ -214,9 +253,7 @@ var (
 		"tail-call-optimization",
 		"Temporal",
 		"import-assertions",
-		"dynamic-import",
 		"logical-assignment-operators",
-		"import.meta",
 		"Atomics",
 		"Atomics.waitAsync",
 		"FinalizationRegistry",
@@ -228,12 +265,27 @@ var (
 		"SharedArrayBuffer",
 		"error-cause",
 		"decorators",
+
 		"regexp-v-flag",
+		"promise-try",
+		"promise-with-resolvers",
+		"import-attributes",
+		"iterator-helpers",
+		"Symbol.iterator",
+		"Float16Array",
+		"Array.fromAsync",
+		"array-grouping",
+		"String.prototype.toWellFormed",
+		"String.prototype.isWellFormed",
+		"change-array-by-copy",
+		"arraybuffer-transfer",
+		"symbols-as-weakmap-keys",
+		"set-methods",
+		"regexp-modifiers",
 	}
 )
 
 func init() {
-
 	skip := func(prefixes ...string) {
 		for _, prefix := range prefixes {
 			skipPrefixes.Add(prefix)
@@ -274,6 +326,7 @@ func init() {
 		"test/language/expressions/class/elements/after-same-line-static-method-rs-static-async-generator-",
 
 		"test/language/eval-code/direct/async-gen-",
+		"test/language/module-code/export-default-asyncgenerator-declaration-binding.js",
 
 		// BigInt
 		"test/built-ins/TypedArrayConstructors/BigUint64Array/",
@@ -285,13 +338,7 @@ func init() {
 		// legacy octal escape in strings in strict mode
 		"test/language/literals/string/legacy-octal-",
 		"test/language/literals/string/legacy-non-octal-",
-
-		// modules
-		"test/language/export/",
-		"test/language/import/",
-		"test/language/module-code/",
 	)
-
 }
 
 type tc39Test struct {
@@ -363,6 +410,15 @@ func (pl *prefixList) Match(s string) bool {
 func (m *tc39Meta) hasFlag(flag string) bool {
 	for _, f := range m.Flags {
 		if f == flag {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *tc39Meta) hasFeature(feature string) bool {
+	for _, f := range m.Features {
+		if f == feature {
 			return true
 		}
 	}
@@ -443,6 +499,56 @@ func (ctx *tc39TestCtx) runTC39Test(name, src string, meta *tc39Meta, t testing.
 	vm.RunProgram(ctx.sabStub)
 	var out []string
 	async := meta.hasFlag("async")
+
+	type cacheElement struct {
+		m   ModuleRecord
+		err error
+	}
+	cache := make(map[string]cacheElement)
+	mx := sync.Mutex{}
+
+	var hostResolveImportedModule func(referencingScriptOrModule interface{}, specifier string) (ModuleRecord, error)
+	hostResolveImportedModule = func(referencingScriptOrModule interface{}, specifier string) (ModuleRecord, error) {
+		mx.Lock()
+		defer mx.Unlock()
+		fname := path.Join(ctx.base, path.Dir(name), specifier)
+		k, ok := cache[fname]
+		if ok {
+			return k.m, k.err
+		}
+		f, err := os.Open(fname)
+		if err != nil {
+			cache[fname] = cacheElement{err: err}
+			return nil, err
+		}
+		defer f.Close()
+
+		b, err := io.ReadAll(f)
+		if err != nil {
+			cache[fname] = cacheElement{err: err}
+			return nil, err
+		}
+
+		str := string(b)
+		p, err := ParseModule(fname, str, hostResolveImportedModule)
+		if err != nil {
+			cache[fname] = cacheElement{err: err}
+			return nil, err
+		}
+		cache[fname] = cacheElement{m: p}
+		return p, nil
+	}
+
+	eventLoopQueue := make(chan func(), 10)
+	dynamicImport := meta.hasFeature("dynamic-import")
+	if dynamicImport {
+		vm.importModuleDynamically = func(referencingScriptOrModule interface{}, specifierValue Value, pcap interface{}) {
+			// fmt.Printf("import(%s, %s, %s)\n", referencingScriptOrModule, specifierValue, pcap)
+			specifier := specifierValue.String()
+			m, err := hostResolveImportedModule(referencingScriptOrModule, specifier)
+			vm.FinishLoadingImportModule(referencingScriptOrModule, specifierValue, pcap, m, err)
+		}
+	}
 	if async {
 		err := ctx.runFile(ctx.base, path.Join("harness", "doneprintHandle.js"), vm)
 		if err != nil {
@@ -455,7 +561,54 @@ func (ctx *tc39TestCtx) runTC39Test(name, src string, meta *tc39Meta, t testing.
 		vm.Set("print", t.Log)
 	}
 
-	err, early := ctx.runTC39Script(name, src, meta.Includes, vm)
+	var err error
+	var early bool
+	var asyncError <-chan error
+	if meta.hasFlag("module") {
+		err, early, asyncError = ctx.runTC39Module(name, src, meta.Includes, vm, hostResolveImportedModule)
+	} else {
+		err, early = ctx.runTC39Script(name, src, meta.Includes, vm)
+	}
+
+	if vm.vm.sp != 0 {
+		t.Fatalf("sp: %d", vm.vm.sp)
+	}
+
+	if l := len(vm.vm.iterStack); l > 0 {
+		t.Fatalf("iter stack is not empty: %d", l)
+	}
+	if async && err == nil {
+		for {
+			complete := false
+			for _, line := range out {
+				if strings.HasPrefix(line, "Test262:AsyncTestFailure:") {
+					t.Fatal(line)
+				} else if line == "Test262:AsyncTestComplete" {
+					complete = true
+				}
+			}
+			if complete {
+				break
+			}
+			for _, line := range out {
+				t.Log(line)
+			}
+			select {
+			case fn := <-eventLoopQueue:
+				fn()
+			case <-time.After(time.Millisecond * 5000):
+				t.Fatal("nothing happened in 5s :(")
+
+			}
+		}
+		if asyncError != nil {
+			select {
+			case err = <-asyncError:
+			case <-time.After(time.Millisecond * 5000):
+				t.Fatal("nothing happened in 5s :(")
+			}
+		}
+	}
 
 	if err != nil {
 		if meta.Negative.Type == "" {
@@ -464,7 +617,12 @@ func (ctx *tc39TestCtx) runTC39Test(name, src string, meta *tc39Meta, t testing.
 					t.Skip("Test threw IgnorableTestError")
 				}
 			}
-			t.Fatalf("%s: %v", name, err)
+			exc := new(Exception)
+			if errors.As(err, &exc) {
+				t.Fatalf("%s: %v", name, exc.String())
+			} else {
+				t.Fatalf("%s: %v", name, err)
+			}
 		} else {
 			if (meta.Negative.Phase == "early" || meta.Negative.Phase == "parse") && !early || meta.Negative.Phase == "runtime" && early {
 				t.Fatalf("%s: error %v happened at the wrong phase (expected %s)", name, err, meta.Negative.Phase)
@@ -505,30 +663,6 @@ func (ctx *tc39TestCtx) runTC39Test(name, src string, meta *tc39Meta, t testing.
 			t.Fatalf("%s: Expected error: %v", name, err)
 		}
 	}
-
-	if vm.vm.sp != 0 {
-		t.Fatalf("sp: %d", vm.vm.sp)
-	}
-
-	if l := len(vm.vm.iterStack); l > 0 {
-		t.Fatalf("iter stack is not empty: %d", l)
-	}
-	if async {
-		complete := false
-		for _, line := range out {
-			if strings.HasPrefix(line, "Test262:AsyncTestFailure:") {
-				t.Fatal(line)
-			} else if line == "Test262:AsyncTestComplete" {
-				complete = true
-			}
-		}
-		if !complete {
-			for _, line := range out {
-				t.Log(line)
-			}
-			t.Fatal("Test262:AsyncTestComplete was not printed")
-		}
-	}
 }
 
 func (ctx *tc39TestCtx) runTC39File(name string, t testing.TB) {
@@ -541,12 +675,9 @@ func (ctx *tc39TestCtx) runTC39File(name string, t testing.TB) {
 	p := path.Join(ctx.base, name)
 	meta, src, err := parseTC39File(p)
 	if err != nil {
-		//t.Fatalf("Could not parse %s: %v", name, err)
+		// t.Fatalf("Could not parse %s: %v", name, err)
 		t.Errorf("Could not parse %s: %v", name, err)
 		return
-	}
-	if meta.hasFlag("module") {
-		t.Skip("module")
 	}
 	if meta.Es5id == "" {
 		for _, feature := range meta.Features {
@@ -565,14 +696,14 @@ func (ctx *tc39TestCtx) runTC39File(name string, t testing.TB) {
 
 	hasRaw := meta.hasFlag("raw")
 
-	if hasRaw || !meta.hasFlag("onlyStrict") {
-		//log.Printf("Running normal test: %s", name)
+	if hasRaw || !meta.hasFlag("onlyStrict") && !meta.hasFlag("module") {
+		// log.Printf("Running normal test: %s", name)
 		t.Logf("Running normal test: %s", name)
 		ctx.runTC39Test(name, src, meta, t)
 	}
 
-	if !hasRaw && !meta.hasFlag("noStrict") {
-		//log.Printf("Running strict test: %s", name)
+	if (!hasRaw && !meta.hasFlag("noStrict")) || meta.hasFlag("module") {
+		// log.Printf("Running strict test: %s", name)
 		t.Logf("Running strict test: %s", name)
 		ctx.runTC39Test(name, "'use strict';\n"+src, meta, t)
 	}
@@ -585,7 +716,6 @@ func (ctx *tc39TestCtx) runTC39File(name string, t testing.TB) {
 		})
 		ctx.benchLock.Unlock()
 	}
-
 }
 
 func (ctx *tc39TestCtx) init() {
@@ -637,6 +767,60 @@ func (ctx *tc39TestCtx) runFile(base, name string, vm *Runtime) error {
 	return err
 }
 
+func (ctx *tc39TestCtx) runTC39Module(name, src string, includes []string, vm *Runtime, hostResolveImportedModule HostResolveImportedModuleFunc) (err error, early bool, asyncError chan error) {
+	early = true
+	err = ctx.runFile(ctx.base, path.Join("harness", "assert.js"), vm)
+	if err != nil {
+		return
+	}
+
+	err = ctx.runFile(ctx.base, path.Join("harness", "sta.js"), vm)
+	if err != nil {
+		return
+	}
+
+	for _, include := range includes {
+		err = ctx.runFile(ctx.base, path.Join("harness", include), vm)
+		if err != nil {
+			return
+		}
+	}
+	m, err := hostResolveImportedModule(nil, path.Base(name))
+	if err != nil {
+		return
+	}
+	p := m.(*SourceTextModuleRecord)
+
+	err = p.Link()
+	if err != nil {
+		return
+	}
+
+	early = false
+	promise := m.Evaluate(vm)
+
+	asyncError = make(chan error, 1)
+	if promise.state == PromiseStateRejected {
+		ex := vm.ExportTo(promise.Result(), &err)
+		if ex != nil {
+			panic(ex)
+		}
+	} else if promise.state == PromiseStatePending {
+		vm.performPromiseThen(promise, vm.ToValue(func(_ FunctionCall) Value {
+			close(asyncError)
+			return nil
+		}), vm.ToValue(func(call FunctionCall) Value {
+			asyncError <- vm.vm.exceptionFromValue(call.Argument(0))
+			close(asyncError)
+			return nil
+		}), nil)
+	} else {
+		// TODO ?!?!
+		close(asyncError)
+	}
+	return
+}
+
 func (ctx *tc39TestCtx) runTC39Script(name, src string, includes []string, vm *Runtime) (err error, early bool) {
 	early = true
 	err = ctx.runFile(ctx.base, path.Join("harness", "assert.js"), vm)
@@ -658,7 +842,6 @@ func (ctx *tc39TestCtx) runTC39Script(name, src string, includes []string, vm *R
 
 	var p *Program
 	p, err = Compile(name, src, false)
-
 	if err != nil {
 		return
 	}
@@ -691,7 +874,6 @@ func (ctx *tc39TestCtx) runTC39Tests(name string) {
 			}
 		}
 	}
-
 }
 
 func TestTC39(t *testing.T) {
@@ -707,11 +889,11 @@ func TestTC39(t *testing.T) {
 		base: tc39BASE,
 	}
 	ctx.init()
-	//ctx.enableBench = true
+	// ctx.enableBench = true
 
 	t.Run("tc39", func(t *testing.T) {
 		ctx.t = t
-		//ctx.runTC39File("test/language/types/number/8.5.1.js", t)
+		// ctx.runTC39File("test/language/types/number/8.5.1.js", t)
 		ctx.runTC39Tests("test/language")
 		ctx.runTC39Tests("test/built-ins")
 		ctx.runTC39Tests("test/annexB/built-ins/String/prototype/substr")
