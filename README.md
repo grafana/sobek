@@ -38,6 +38,8 @@ For this reason it is very likely that it will be updated in breaking manner in 
 
 For any usage info or bare documentation it is recommended to look at the tests in [modules_test.go](https://github.com/grafana/sobek/blob/main/modules_test.go) and [modules_integration_test.go](https://github.com/grafana/sobek/blob/main/modules_integration_test.go).
 
+Also of note is that due to the nature of ESM you need to have an event loop implementation to use it. That is still not provided by Sobek and likely never will be.
+
 ### WeakMap
 WeakMap is implemented by embedding references to the values into the keys. This means that as long
 as the key is reachable all values associated with it in any weak maps also remain reachable and therefore
