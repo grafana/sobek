@@ -1224,6 +1224,169 @@ func (r *Runtime) arrayproto_flatMap(call FunctionCall) Value {
 	return a
 }
 
+func (r *Runtime) arrayproto_with(call FunctionCall) Value {
+	o := call.This.ToObject(r)
+	relativeIndex := call.Argument(0).ToInteger()
+	value := call.Argument(1)
+	length := toLength(o.self.getStr("length", nil))
+
+	actualIndex := int64(0)
+	if relativeIndex >= 0 {
+		actualIndex = relativeIndex
+	} else {
+		actualIndex = length + relativeIndex
+	}
+	if actualIndex >= length || actualIndex < 0 {
+		panic(r.newError(r.getRangeError(), "Invalid index %s", call.Argument(0).String()))
+	}
+	a := r.newArrayLength(length)
+
+	for k := int64(0); k < length; k++ {
+		pk := valueInt(k)
+		var fromValue Value
+		if k == actualIndex {
+			fromValue = value
+		} else {
+			fromValue = o.self.getIdx(pk, nil)
+		}
+		createDataPropertyOrThrow(a, pk, fromValue)
+	}
+	return a
+}
+
+func (r *Runtime) arrayproto_toReversed(call FunctionCall) Value {
+	o := call.This.ToObject(r)
+	length := toLength(o.self.getStr("length", nil))
+	a := r.newArrayLength(length)
+
+	if src := r.checkStdArrayObj(o); src != nil {
+		for k := int64(0); k < length; k++ {
+			pk := valueInt(k)
+			from := valueInt(length - k - 1)
+			fromValue := src.values[from]
+			createDataPropertyOrThrow(a, pk, fromValue)
+		}
+	} else {
+		for k := int64(0); k < length; k++ {
+			pk := valueInt(k)
+			from := valueInt(length - k - 1)
+			fromValue := o.self.getIdx(from, nil)
+			createDataPropertyOrThrow(a, pk, fromValue)
+		}
+	}
+
+	return a
+}
+
+func (r *Runtime) arrayproto_toSorted(call FunctionCall) Value {
+	var compareFn func(FunctionCall) Value
+	arg := call.Argument(0)
+	if arg != _undefined {
+		if arg, ok := arg.(*Object); ok {
+			compareFn, _ = arg.self.assertCallable()
+		}
+		if compareFn == nil {
+			panic(r.NewTypeError("The comparison function must be either a function or undefined"))
+		}
+	}
+
+	o := call.This.ToObject(r)
+	length := toLength(o.self.getStr("length", nil))
+	if length >= math.MaxUint32 {
+		panic(r.newError(r.getRangeError(), "Invalid array length"))
+	}
+	a := make([]Value, 0, length)
+
+	for i := int64(0); i < length; i++ {
+		idx := valueInt(i)
+		a = append(a, nilSafe(o.self.getIdx(idx, nil)))
+	}
+	ar := r.newArrayValues(a)
+	ctx := arraySortCtx{
+		obj:     ar.self,
+		compare: compareFn,
+	}
+
+	sort.Stable(&ctx)
+	return ar
+}
+
+func (r *Runtime) arrayproto_toSpliced(call FunctionCall) Value {
+	o := call.This.ToObject(r)
+	length := toLength(o.self.getStr("length", nil))
+	actualStart := relToIdx(call.Argument(0).ToInteger(), length)
+	var actualSkipCount int64
+	switch len(call.Arguments) {
+	case 0:
+	case 1:
+		actualSkipCount = length - actualStart
+	default:
+		actualSkipCount = min(max(call.Argument(1).ToInteger(), 0), length-actualStart)
+	}
+	itemCount := max(int64(len(call.Arguments)-2), 0)
+	newLength := length - actualSkipCount + itemCount
+	if newLength >= maxInt {
+		panic(r.NewTypeError("Invalid array length"))
+	}
+
+	if src := r.checkStdArrayObj(o); src != nil {
+		var values []Value
+		if itemCount < actualSkipCount {
+			values = src.values
+			copy(values[actualStart+itemCount:], values[actualStart+actualSkipCount:])
+			tail := values[newLength:]
+			for k := range tail {
+				tail[k] = nil
+			}
+			values = values[:newLength]
+		} else if itemCount > actualSkipCount {
+			if int64(cap(src.values)) >= newLength {
+				values = src.values[:newLength]
+				copy(values[actualStart+itemCount:], values[actualStart+actualSkipCount:length])
+			} else {
+				values = make([]Value, newLength)
+				copy(values, src.values[:actualStart])
+				copy(values[actualStart+itemCount:], src.values[actualStart+actualSkipCount:])
+			}
+		} else {
+			values = src.values
+		}
+		if itemCount > 0 {
+			copy(values[actualStart:], call.Arguments[2:])
+		}
+		return r.newArrayValues(values)
+	} else {
+		a := r.newArrayLength(newLength)
+		var i int64
+		rl := actualStart + actualSkipCount
+
+		for i < actualStart {
+			pi := valueInt(i)
+			iValue := nilSafe(o.self.getIdx(pi, nil))
+			createDataPropertyOrThrow(a, pi, iValue)
+			i++
+		}
+
+		if itemCount > 0 {
+			for _, item := range call.Arguments[2:] {
+				createDataPropertyOrThrow(a, valueInt(i), nilSafe(item))
+				i++
+			}
+		}
+
+		for i < newLength {
+			pi := valueInt(i)
+			from := valueInt(rl)
+			fromValue := nilSafe(o.self.getIdx(from, nil))
+			createDataPropertyOrThrow(a, pi, fromValue)
+			i++
+			rl++
+		}
+
+		return a
+	}
+}
+
 func (r *Runtime) checkStdArrayObj(obj *Object) *arrayObject {
 	if arr, ok := obj.self.(*arrayObject); ok &&
 		arr.propValueCount == 0 &&
@@ -1442,6 +1605,10 @@ func createArrayProtoTemplate() *objectTemplate {
 	t.putStr("toLocaleString", func(r *Runtime) Value { return r.methodProp(r.arrayproto_toLocaleString, "toLocaleString", 0) })
 	t.putStr("toString", func(r *Runtime) Value { return valueProp(r.getArrayToString(), true, false, true) })
 	t.putStr("unshift", func(r *Runtime) Value { return r.methodProp(r.arrayproto_unshift, "unshift", 1) })
+	t.putStr("with", func(r *Runtime) Value { return r.methodProp(r.arrayproto_with, "with", 2) })
+	t.putStr("toReversed", func(r *Runtime) Value { return r.methodProp(r.arrayproto_toReversed, "toReversed", 0) })
+	t.putStr("toSorted", func(r *Runtime) Value { return r.methodProp(r.arrayproto_toSorted, "toSorted", 1) })
+	t.putStr("toSpliced", func(r *Runtime) Value { return r.methodProp(r.arrayproto_toSpliced, "toSpliced", 2) })
 	t.putStr("values", func(r *Runtime) Value { return valueProp(r.getArrayValues(), true, false, true) })
 
 	t.putSym(SymIterator, func(r *Runtime) Value { return valueProp(r.getArrayValues(), true, false, true) })
@@ -1461,6 +1628,9 @@ func createArrayProtoTemplate() *objectTemplate {
 		bl.setOwnStr("values", valueTrue, true)
 		bl.setOwnStr("groupBy", valueTrue, true)
 		bl.setOwnStr("groupByToMap", valueTrue, true)
+		bl.setOwnStr("toReversed", valueTrue, true)
+		bl.setOwnStr("toSorted", valueTrue, true)
+		bl.setOwnStr("toSpliced", valueTrue, true)
 
 		return valueProp(bl.val, false, false, true)
 	})
