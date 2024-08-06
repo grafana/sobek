@@ -1338,11 +1338,9 @@ func (r *Runtime) arrayproto_toSpliced(call FunctionCall) Value {
 	length := toLength(o.self.getStr("length", nil))
 	actualStart := relToIdx(call.Argument(0).ToInteger(), length)
 	var actualSkipCount int64
-	switch len(call.Arguments) {
-	case 0:
-	case 1:
+	if len(call.Arguments) == 1 {
 		actualSkipCount = length - actualStart
-	default:
+	} else if len(call.Arguments) > 1 {
 		actualSkipCount = min(max(call.Argument(1).ToInteger(), 0), length-actualStart)
 	}
 	itemCount := max(int64(len(call.Arguments)-2), 0)
@@ -1354,24 +1352,23 @@ func (r *Runtime) arrayproto_toSpliced(call FunctionCall) Value {
 	if src := r.checkStdArrayObj(o); src != nil {
 		var values []Value
 		if itemCount < actualSkipCount {
-			values = src.values
+			values = make([]Value, len(src.values))
+			copy(values, src.values)
 			copy(values[actualStart+itemCount:], values[actualStart+actualSkipCount:])
-			tail := values[newLength:]
-			for k := range tail {
-				tail[k] = nil
-			}
 			values = values[:newLength]
 		} else if itemCount > actualSkipCount {
 			if int64(cap(src.values)) >= newLength {
-				values = src.values[:newLength]
-				copy(values[actualStart+itemCount:], values[actualStart+actualSkipCount:length])
+				values = make([]Value, newLength)
+				copy(values, src.values[:actualStart])
+				copy(values[actualStart+itemCount:], src.values[actualStart+actualSkipCount:])
 			} else {
 				values = make([]Value, newLength)
 				copy(values, src.values[:actualStart])
 				copy(values[actualStart+itemCount:], src.values[actualStart+actualSkipCount:])
 			}
 		} else {
-			values = src.values
+			values = make([]Value, len(src.values))
+			copy(values, src.values)
 		}
 		if itemCount > 0 {
 			copy(values[actualStart:], call.Arguments[2:])
