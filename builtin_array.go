@@ -1351,24 +1351,13 @@ func (r *Runtime) arrayproto_toSpliced(call FunctionCall) Value {
 
 	if src := r.checkStdArrayObj(o); src != nil {
 		var values []Value
-		if itemCount < actualSkipCount {
+		if itemCount == actualSkipCount {
 			values = make([]Value, len(src.values))
 			copy(values, src.values)
-			copy(values[actualStart+itemCount:], values[actualStart+actualSkipCount:])
-			values = values[:newLength]
-		} else if itemCount > actualSkipCount {
-			if int64(cap(src.values)) >= newLength {
-				values = make([]Value, newLength)
-				copy(values, src.values[:actualStart])
-				copy(values[actualStart+itemCount:], src.values[actualStart+actualSkipCount:])
-			} else {
-				values = make([]Value, newLength)
-				copy(values, src.values[:actualStart])
-				copy(values[actualStart+itemCount:], src.values[actualStart+actualSkipCount:])
-			}
 		} else {
-			values = make([]Value, len(src.values))
-			copy(values, src.values)
+			values = make([]Value, newLength)
+			copy(values, src.values[:actualStart])
+			copy(values[actualStart+itemCount:], src.values[actualStart+actualSkipCount:])
 		}
 		if itemCount > 0 {
 			copy(values[actualStart:], call.Arguments[2:])
