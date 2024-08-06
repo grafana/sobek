@@ -355,9 +355,13 @@ func TestArrayToSpliced(t *testing.T) {
 	assert(compareArray(a, [1, 2, 3, 4, 5]));
 	assert(compareArray(c, [1, 4, 5]));
 	assert(compareArray(a.toSpliced(4, 2, 'a', 'b'), [1, 2, 3, 4, 'a', 'b']));
+	assert(compareArray(a, [1, 2, 3, 4, 5]));
 	assert(compareArray(a.toSpliced(-2, 2), [1, 2, 3]));
+	assert(compareArray(a, [1, 2, 3, 4, 5]));
 	assert(compareArray(a.toSpliced(2, 10), [1, 2]));
+	assert(compareArray(a, [1, 2, 3, 4, 5]));
 	assert(compareArray(a.toSpliced(1, 0, 'a'), [1, 'a', 2, 3, 4, 5]));
+	assert(compareArray(a, [1, 2, 3, 4, 5]));
 	`
 	testScriptWithTestLib(SCRIPT, _undefined, t)
 }
