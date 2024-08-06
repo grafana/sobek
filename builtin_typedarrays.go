@@ -1171,14 +1171,13 @@ func (r *Runtime) typedArrayProto_with(call FunctionCall) Value {
 	if !ta.isValidIntegerIndex(actualIndex) {
 		panic(r.newError(r.getRangeError(), "Invalid typed array index"))
 	}
-	ta.viewedArrayBuf.ensureNotDetached(true)
 
 	// TODO BigInt
 	// 7. If O.[[ContentType]] is BIGINT, let numericValue be ? ToBigInt(value).
 	// 8. Else, let numericValue be ? ToNumber(value).
 	numericValue := call.Argument(1).ToNumber()
 
-	a := (r.toConstructor(ta.defaultCtor)([]Value{intToValue(int64(length))}, ta.defaultCtor)).self.(*typedArrayObject)
+	a := r.typedArrayCreate(ta.defaultCtor, intToValue(int64(length)))
 	for k := 0; k < length; k++ {
 		var fromValue Value
 		if k == actualIndex {
@@ -1199,8 +1198,7 @@ func (r *Runtime) typedArrayProto_toReversed(call FunctionCall) Value {
 	}
 	length := ta.length
 
-	a := (r.toConstructor(ta.defaultCtor)([]Value{intToValue(int64(length))}, ta.defaultCtor)).self.(*typedArrayObject)
-	ta.viewedArrayBuf.ensureNotDetached(true)
+	a := r.typedArrayCreate(ta.defaultCtor, intToValue(int64(length)))
 
 	for k := 0; k < length; k++ {
 		from := length - k - 1
@@ -1231,9 +1229,7 @@ func (r *Runtime) typedArrayProto_toSorted(call FunctionCall) Value {
 
 	length := ta.length
 
-	a := (r.toConstructor(ta.defaultCtor)([]Value{intToValue(int64(length))}, ta.defaultCtor)).self.(*typedArrayObject)
-	ta.viewedArrayBuf.ensureNotDetached(true)
-
+	a := r.typedArrayCreate(ta.defaultCtor, intToValue(int64(length)))
 	copy(a.viewedArrayBuf.data, ta.viewedArrayBuf.data)
 
 	ctx := typedArraySortCtx{

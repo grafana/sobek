@@ -1239,43 +1239,58 @@ func (r *Runtime) arrayproto_with(call FunctionCall) Value {
 	if actualIndex >= length || actualIndex < 0 {
 		panic(r.newError(r.getRangeError(), "Invalid index %s", call.Argument(0).String()))
 	}
-	a := r.newArrayLength(length)
 
-	for k := int64(0); k < length; k++ {
-		pk := valueInt(k)
-		var fromValue Value
-		if k == actualIndex {
-			fromValue = value
-		} else {
-			fromValue = o.self.getIdx(pk, nil)
+	if src := r.checkStdArrayObj(o); src != nil {
+		a := make([]Value, 0, length)
+		for k := int64(0); k < length; k++ {
+			pk := valueInt(k)
+			var fromValue Value
+			if k == actualIndex {
+				fromValue = value
+			} else {
+				fromValue = src.values[pk]
+			}
+			a = append(a, fromValue)
 		}
-		createDataPropertyOrThrow(a, pk, fromValue)
+		return r.newArrayValues(a)
+	} else {
+		a := r.newArrayLength(length)
+		for k := int64(0); k < length; k++ {
+			pk := valueInt(k)
+			var fromValue Value
+			if k == actualIndex {
+				fromValue = value
+			} else {
+				fromValue = o.self.getIdx(pk, nil)
+			}
+			createDataPropertyOrThrow(a, pk, fromValue)
+		}
+		return a
 	}
-	return a
 }
 
 func (r *Runtime) arrayproto_toReversed(call FunctionCall) Value {
 	o := call.This.ToObject(r)
 	length := toLength(o.self.getStr("length", nil))
-	a := r.newArrayLength(length)
 
 	if src := r.checkStdArrayObj(o); src != nil {
+		a := make([]Value, 0, length)
 		for k := int64(0); k < length; k++ {
-			pk := valueInt(k)
 			from := valueInt(length - k - 1)
 			fromValue := src.values[from]
-			createDataPropertyOrThrow(a, pk, fromValue)
+			a = append(a, fromValue)
 		}
+		return r.newArrayValues(a)
 	} else {
+		a := r.newArrayLength(length)
 		for k := int64(0); k < length; k++ {
 			pk := valueInt(k)
 			from := valueInt(length - k - 1)
 			fromValue := o.self.getIdx(from, nil)
 			createDataPropertyOrThrow(a, pk, fromValue)
 		}
+		return a
 	}
-
-	return a
 }
 
 func (r *Runtime) arrayproto_toSorted(call FunctionCall) Value {
@@ -1295,12 +1310,19 @@ func (r *Runtime) arrayproto_toSorted(call FunctionCall) Value {
 	if length >= math.MaxUint32 {
 		panic(r.newError(r.getRangeError(), "Invalid array length"))
 	}
-	a := make([]Value, 0, length)
+	var a []Value
 
-	for i := int64(0); i < length; i++ {
-		idx := valueInt(i)
-		a = append(a, nilSafe(o.self.getIdx(idx, nil)))
+	if src := r.checkStdArrayObj(o); src != nil {
+		a = make([]Value, length)
+		copy(a, src.values)
+	} else {
+		a = make([]Value, 0, length)
+		for i := int64(0); i < length; i++ {
+			idx := valueInt(i)
+			a = append(a, nilSafe(o.self.getIdx(idx, nil)))
+		}
 	}
+
 	ar := r.newArrayValues(a)
 	ctx := arraySortCtx{
 		obj:     ar.self,
