@@ -178,8 +178,9 @@ var (
 		"test/language/expressions/class/cpn-class-expr-fields-methods-computed-property-name-from-integer-separators.js": true,
 
 		// BigInt
-		"test/built-ins/Object/seal/seal-biguint64array.js": true,
-		"test/built-ins/Object/seal/seal-bigint64array.js":  true,
+		"test/built-ins/Object/seal/seal-biguint64array.js":          true,
+		"test/built-ins/Object/seal/seal-bigint64array.js":           true,
+		"test/built-ins/RegExp/prototype/dotAll/this-val-non-obj.js": true,
 
 		// Regexp
 		"test/language/literals/regexp/invalid-range-negative-lookbehind.js":    true,
@@ -245,8 +246,6 @@ var (
 		"BigInt",
 		"resizable-arraybuffer",
 		"regexp-named-groups",
-		"regexp-duplicate-named-groups",
-		"regexp-dotall",
 		"regexp-unicode-property-escapes",
 		"regexp-match-indices",
 		"legacy-regexp",
@@ -263,9 +262,9 @@ var (
 		"__setter__",
 		"ShadowRealm",
 		"SharedArrayBuffer",
-		"error-cause",
 		"decorators",
 
+		"regexp-duplicate-named-groups",
 		"regexp-v-flag",
 		"promise-try",
 		"promise-with-resolvers",
