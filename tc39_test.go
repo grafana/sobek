@@ -184,6 +184,7 @@ var (
 		"test/built-ins/TypedArray/prototype/toReversed/this-value-invalid.js":     true,
 		"test/built-ins/TypedArray/prototype/toSorted/comparefn-not-a-function.js": true,
 		"test/built-ins/TypedArray/prototype/toSorted/this-value-invalid.js":       true,
+		"test/built-ins/RegExp/prototype/dotAll/this-val-non-obj.js":               true,
 
 		// Regexp
 		"test/language/literals/regexp/invalid-range-negative-lookbehind.js":    true,
@@ -249,8 +250,6 @@ var (
 		"BigInt",
 		"resizable-arraybuffer",
 		"regexp-named-groups",
-		"regexp-duplicate-named-groups",
-		"regexp-dotall",
 		"regexp-unicode-property-escapes",
 		"regexp-match-indices",
 		"legacy-regexp",
@@ -267,9 +266,9 @@ var (
 		"__setter__",
 		"ShadowRealm",
 		"SharedArrayBuffer",
-		"error-cause",
 		"decorators",
 
+		"regexp-duplicate-named-groups",
 		"regexp-v-flag",
 		"promise-try",
 		"promise-with-resolvers",

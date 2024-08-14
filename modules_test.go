@@ -135,6 +135,49 @@ func TestSimpleModule(t *testing.T) {
 			`,
 			"dep.js": `export default () => {return 5 };`,
 		},
+		"default export Class usage": {
+			"a.js": `
+				import b from "dep.js";
+				export default class m {
+					some() {
+						return b();
+					}
+				}
+				let l = new m();
+				globalThis.s = l.some();
+			`,
+			"dep.js": `export default () => {return 5 };`,
+		},
+		"default export function usage": {
+			"a.js": `
+				import b from "dep.js";
+				export default function some () {
+					return b();
+				}
+				globalThis.s = some();
+			`,
+			"dep.js": `export default () => {return 5 };`,
+		},
+		"default export generator usage": {
+			"a.js": `
+				import b from "dep.js";
+				export default function * some () {
+					yield b();
+				}
+				globalThis.s = some().next().value;
+			`,
+			"dep.js": `export default () => {return 5 };`,
+		},
+		"default export async function usage": {
+			"a.js": `
+				import b from "dep.js";
+				export default async function some () {
+					return b();
+				}
+				globalThis.s = await some();
+			`,
+			"dep.js": `export default () => {return 5 };`,
+		},
 		"default export arrow async": {
 			"a.js": `
 				import b from "dep.js";
