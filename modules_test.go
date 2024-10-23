@@ -437,3 +437,41 @@ func TestImportingUnexported(t *testing.T) {
 		t.Fatalf("Expected values %q but got %q", expValue, exc.String())
 	}
 }
+
+func TestModuleAsyncErrorAndPromiseRejection(t *testing.T) {
+	t.Parallel()
+	fn := runModules(t, map[string]string{
+		`a.js`: `
+			import "dep.js"
+			something;
+		`,
+		`dep.js`: `
+			await 5;
+		`,
+	})
+
+	rt := New()
+	unhandledRejectedPromises := make(map[*Promise]struct{})
+	rt.promiseRejectionTracker = func(p *Promise, operation PromiseRejectionOperation) {
+		switch operation {
+		case PromiseRejectionReject:
+			unhandledRejectedPromises[p] = struct{}{}
+		case PromiseRejectionHandle:
+			delete(unhandledRejectedPromises, p)
+		}
+	}
+	promise := fn(rt)
+	rt.performPromiseThen(promise, rt.ToValue(func() {}), rt.ToValue(func() {}), nil)
+	if promise.state != PromiseStateRejected {
+		t.Fatalf("expected promise to be rejected %q", promise.state)
+	}
+	exc := promise.Result().Export().(*Exception)
+	expValue := "ReferenceError: something is not defined\n\tat a.js:3:4(6)\n"
+	if exc.String() != expValue {
+		t.Fatalf("Expected values %q but got %q", expValue, exc.String())
+	}
+
+	if len(unhandledRejectedPromises) != 0 {
+		t.Fatalf("zero unhandled exceptions were expected but there were some %+v", unhandledRejectedPromises)
+	}
+}
