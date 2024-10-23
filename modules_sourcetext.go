@@ -34,7 +34,7 @@ func (s *SourceTextModuleInstance) ExecuteModule(rt *Runtime, res, rej func(inte
 		if res != nil {
 			panic("sobek bug where a not async module was executed as async on")
 		}
-		// we handle the failure below so we need to mark this as prmise as handled so we it doesn't
+		// we handle the failure below so we need to mark this as promise as handled so it doesn't
 		// trigger the PromiseRejectionTracker
 		rt.performPromiseThen(s.asyncPromise, rt.ToValue(func() {}), rt.ToValue(func() {}), nil)
 		switch s.asyncPromise.state {
