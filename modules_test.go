@@ -475,3 +475,57 @@ func TestModuleAsyncErrorAndPromiseRejection(t *testing.T) {
 		t.Fatalf("zero unhandled exceptions were expected but there were some %+v", unhandledRejectedPromises)
 	}
 }
+
+func TestModuleAsyncInterrupt(t *testing.T) {
+	t.Parallel()
+	fn := runModules(t, map[string]string{
+		`a.js`: `
+			import { s } from "dep.js"
+			s();
+		`,
+		`dep.js`: `
+			await 5;
+			export function s() {
+				interrupt();
+				let buf = "";
+				for (let i = 0; i < 10000; i++) {
+					buf += "a" + "a";
+				}
+				badcall();
+			}
+		`,
+	})
+
+	rt := New()
+	var shouldntHappen bool
+	rt.Set("interrupt", rt.ToValue(func() { rt.Interrupt("the error we want") }))
+	rt.Set("badcall", rt.ToValue(func() { shouldntHappen = true }))
+
+	unhandledRejectedPromises := make(map[*Promise]struct{})
+	rt.promiseRejectionTracker = func(p *Promise, operation PromiseRejectionOperation) {
+		switch operation {
+		case PromiseRejectionReject:
+			unhandledRejectedPromises[p] = struct{}{}
+		case PromiseRejectionHandle:
+			delete(unhandledRejectedPromises, p)
+		}
+	}
+	promise := fn(rt)
+	rt.performPromiseThen(promise, rt.ToValue(func() {}), rt.ToValue(func() {}), nil)
+	if promise.state != PromiseStateRejected {
+		t.Fatalf("expected promise to be rejected %q", promise.state)
+	}
+	exc := promise.Result().Export().(*InterruptedError)
+	expValue := "the error we want\n\tat s (dep.js:4:14(3))\n\tat a.js:3:5(10)\n"
+	if exc.String() != expValue {
+		t.Fatalf("Expected values %q but got %q", expValue, exc.String())
+	}
+
+	if len(unhandledRejectedPromises) != 0 {
+		t.Fatalf("zero unhandled exceptions were expected but there were some %+v", unhandledRejectedPromises)
+	}
+	if shouldntHappen {
+		t.Fatal("code was supposed to be interrupted but that din't work")
+
+	}
+}
