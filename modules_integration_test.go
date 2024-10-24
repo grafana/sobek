@@ -333,7 +333,7 @@ func (s *cyclicModuleImpl) ResolveExport(exportName string, resolveset ...sobek.
 }
 
 func (s *cyclicModuleImpl) GetExportedNames(callback func([]string), records ...sobek.ModuleRecord) bool {
-	result := make([]string, len(s.exports))
+	result := make([]string, 0, len(s.exports))
 	for k := range s.exports {
 		result = append(result, k)
 	}
@@ -351,7 +351,7 @@ func (si *cyclicModuleInstanceImpl) HasTLA() bool {
 	return false
 }
 
-func (si *cyclicModuleInstanceImpl) ExecuteModule(rt *sobek.Runtime, res, rej func(interface{})) (sobek.CyclicModuleInstance, error) {
+func (si *cyclicModuleInstanceImpl) ExecuteModule(rt *sobek.Runtime, _, _ func(interface{}) error) (sobek.CyclicModuleInstance, error) {
 	si.rt = rt
 	return si, nil
 }
