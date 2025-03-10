@@ -220,7 +220,6 @@ var (
 		"tail-call-optimization",
 		"Temporal",
 		"import-assertions",
-		"logical-assignment-operators",
 		"Atomics",
 		"Atomics.waitAsync",
 		"Atomics.pause",
