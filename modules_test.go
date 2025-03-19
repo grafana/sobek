@@ -34,6 +34,19 @@ func TestSimpleModule(t *testing.T) {
 				export var { b } = a;
 			`,
 		},
+		"var export destructuring array": {
+			"a.js": `
+				import { b } from "dep.js";
+				eval("globalThis.s = b()");
+			`,
+			"dep.js": `
+				const a = [ function() {return 5 }, 5 ];
+				export var [ b, s ] = a;
+				if (s != 5) {
+					throw "bad s=" + s;
+				}
+			`,
+		},
 		"let export": {
 			"a.js": `
 				import { b } from "dep.js";
@@ -58,6 +71,19 @@ func TestSimpleModule(t *testing.T) {
 				export let { b } = a;
 			`,
 		},
+		"let export destructuring array": {
+			"a.js": `
+				import { b } from "dep.js";
+				eval("globalThis.s = b()");
+			`,
+			"dep.js": `
+				const a = [ function() {return 5 }, 5 ];
+				export let [ b, s ] = a;
+				if (s != 5) {
+					throw "bad s=" + s;
+				}
+			`,
+		},
 		"const export": {
 			"a.js": `
 				import { b } from "dep.js";
@@ -71,6 +97,19 @@ func TestSimpleModule(t *testing.T) {
 				eval("globalThis.s = b()")
 			`,
 			"dep.js": `export const b = function() { return 5 };`,
+		},
+		"const export destructuring array": {
+			"a.js": `
+				import { b } from "dep.js";
+				eval("globalThis.s = b()");
+			`,
+			"dep.js": `
+				const a = [ function() {return 5 }, 5 ];
+				export const [ b, s ] = a;
+				if (s != 5) {
+					throw "bad s=" + s;
+				}
+			`,
 		},
 		"let export with update": {
 			"a.js": `
@@ -526,6 +565,5 @@ func TestModuleAsyncInterrupt(t *testing.T) {
 	}
 	if shouldntHappen {
 		t.Fatal("code was supposed to be interrupted but that din't work")
-
 	}
 }
