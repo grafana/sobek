@@ -9,6 +9,8 @@ jobs:
         arch: ["", "386"]
       fail-fast: false
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
@@ -16,13 +18,15 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Check formatting
         run: diff -u <(echo -n) <(gofmt -d .)
         if: ${{ matrix.go-version == '1.x' }}
       - name: Run go vet
         run: go vet ./...
       - name: Run staticcheck
-        uses: dominikh/staticcheck-action@v1.3.1
+        uses: dominikh/staticcheck-action@fe1dd0c3658873b46f8c9bb3291096a617310ca6 # v1.3.1
         with:
           version: "2025.1"
           install-go: false
