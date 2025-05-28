@@ -6,7 +6,6 @@ metadata:
   description: |
     Sobek is an implementation of ECMAScript 5.1 in pure Go with emphasis on standard compliance and performance.
   annotations:
-    backstage.io/techdocs-ref: dir:.
     github.com/project-slug: grafana/sobek
 spec:
   type: library
