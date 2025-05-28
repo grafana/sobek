@@ -1,0 +1,13 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: sobek
+  title: sobek
+  description: |
+    Sobek is an implementation of ECMAScript 5.1 in pure Go with emphasis on standard compliance and performance.
+  annotations:
+    github.com/project-slug: grafana/sobek
+spec:
+  type: library
+  owner: group:default/k6-core
+  lifecycle: production
