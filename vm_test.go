@@ -1,10 +1,11 @@
 package sobek
 
 import (
+	"testing"
+
 	"github.com/grafana/sobek/file"
 	"github.com/grafana/sobek/parser"
 	"github.com/grafana/sobek/unistring"
-	"testing"
 )
 
 func TestTaggedTemplateArgExport(t *testing.T) {
@@ -48,7 +49,6 @@ func TestVM1(t *testing.T) {
 	} else {
 		t.Fatalf("Unexpected result: %v", rv)
 	}
-
 }
 
 func TestEvalVar(t *testing.T) {
@@ -92,9 +92,9 @@ func TestNewArrayFromIterClosed(t *testing.T) {
 
 func BenchmarkVmNOP2(b *testing.B) {
 	prg := []func(*vm){
-		//loadVal(0).exec,
-		//loadVal(1).exec,
-		//add.exec,
+		// loadVal(0).exec,
+		// loadVal(1).exec,
+		// add.exec,
 		jump(1).exec,
 	}
 
@@ -128,7 +128,7 @@ func BenchmarkVmNOP(b *testing.B) {
 	vm.prg = &Program{
 		code: []instruction{
 			jump(1),
-			//jump(1),
+			// jump(1),
 		},
 	}
 
@@ -136,7 +136,6 @@ func BenchmarkVmNOP(b *testing.B) {
 		vm.pc = 0
 		vm.run()
 	}
-
 }
 
 func BenchmarkVm1(b *testing.B) {
@@ -145,8 +144,8 @@ func BenchmarkVm1(b *testing.B) {
 
 	vm := r.vm
 
-	//ins1 := loadVal1(0)
-	//ins2 := loadVal1(1)
+	// ins1 := loadVal1(0)
+	// ins2 := loadVal1(1)
 
 	vm.prg = &Program{
 		code: []instruction{
@@ -184,8 +183,8 @@ fib(35);
 		b.Fatal(err)
 	}
 
-	c := newCompiler()
-	c.compile(prg, false, true, nil)
+	c := newCompiler(false)
+	c.compile(prg, false, false, nil)
 	c.p.dumpCode(b.Logf)
 
 	r := &Runtime{}
@@ -207,7 +206,6 @@ fib(35);
 	if !v.SameAs(expectedResult) {
 		b.Fatalf("Result: %+v, expected: %+v", v, expectedResult)
 	}
-
 }
 
 func BenchmarkEmptyLoop(b *testing.B) {
