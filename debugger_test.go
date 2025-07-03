@@ -19,7 +19,7 @@ func TestDebuggerBreakpoint(t *testing.T) {
 	debugger := r.AttachDebugger()
 
 	setBreakpointAndLog := func(line int) {
-		if err := debugger.SetBreakpoint("test.js", line); err != nil {
+		if _, err := debugger.SetBreakpoint("test.js", line); err != nil {
 			t.Fatal(err)
 		} else {
 			t.Logf("Set breakpoint on line %d", line)
@@ -39,9 +39,9 @@ func TestDebuggerBreakpoint(t *testing.T) {
 			}
 		}()
 
-		reason := debugger.Continue()
-		if reason != BreakpointActivation {
-			t.Errorf("wrong activation %s", reason)
+		activation := debugger.Continue()
+		if activation.Reason != BreakpointActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		} else if debugger.Line() != 3 {
 			t.Errorf("wrong line: %d", debugger.Line())
 		} else {
@@ -63,9 +63,9 @@ func TestDebuggerBreakpoint(t *testing.T) {
 		// Go to next, so that the breakpointed line is executed
 		debugger.Next()
 
-		reason = debugger.Continue()
-		if reason != BreakpointActivation {
-			t.Errorf("wrong activation %s", reason)
+		activation = debugger.Continue()
+		if activation.Reason != BreakpointActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		} else {
 			t.Logf("hit second breakpoint on line %d", debugger.Line())
 		}
@@ -101,10 +101,10 @@ func TestDebuggerNext(t *testing.T) {
 			}
 		}()
 		defer debugger.Detach()
-		reason := debugger.Continue()
+		activation := debugger.Continue()
 		t.Logf("%d\n", debugger.Line())
-		if reason != DebuggerStatementActivation {
-			t.Errorf("wrong activation %s", reason)
+		if activation.Reason != DebuggerStatementActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		}
 
 		if err := debugger.Next(); err != nil {
@@ -152,16 +152,16 @@ func TestDebuggerContinue(t *testing.T) {
 			}
 		}()
 		defer debugger.Detach()
-		reason := debugger.Continue()
+		activation := debugger.Continue()
 		t.Logf("%d\n", debugger.Line())
-		if reason != DebuggerStatementActivation {
-			t.Errorf("wrong activation %s", reason)
+		if activation.Reason != DebuggerStatementActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		} else {
 			t.Log("Hit first debugger statement")
 		}
-		reason = debugger.Continue()
-		if reason != DebuggerStatementActivation {
-			t.Errorf("wrong activation %s", reason)
+		activation = debugger.Continue()
+		if activation.Reason != DebuggerStatementActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		} else {
 			t.Log("Hit second debugger statement")
 		}
@@ -203,7 +203,7 @@ f1();
 	debugger := r.AttachDebugger()
 
 	breakLine := 16
-	if err := debugger.SetBreakpoint("test.js", breakLine); err != nil {
+	if _, err := debugger.SetBreakpoint("test.js", breakLine); err != nil {
 		t.Fatal(err)
 	} else {
 		t.Logf("Set breakpoint on line %d", breakLine)
@@ -218,9 +218,9 @@ f1();
 			}
 		}()
 
-		reason := debugger.Continue()
-		if reason != BreakpointActivation {
-			t.Errorf("wrong activation %s", reason)
+		activation := debugger.Continue()
+		if activation.Reason != BreakpointActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		} else if debugger.Line() != breakLine {
 			t.Errorf("expect line: %d, wrong line: %d", breakLine, debugger.Line())
 		} else {
@@ -268,7 +268,7 @@ test();
 	debugger := r.AttachDebugger()
 
 	for _, line := range []int{6, 9, 11, 14, 15} {
-		if err := debugger.SetBreakpoint("test.js", line); err != nil {
+		if _, err := debugger.SetBreakpoint("test.js", line); err != nil {
 			t.Fatal(err)
 		} else {
 			t.Logf("Set breakpoint on line %d", line)
@@ -286,9 +286,9 @@ test();
 		}()
 
 		for _, line := range []int{9, 6, 6, 14, 11, 15, 11} {
-			reason := debugger.Continue()
-			if reason != BreakpointActivation {
-				t.Errorf("wrong activation %s", reason)
+			activation := debugger.Continue()
+			if activation.Reason != BreakpointActivation {
+				t.Errorf("wrong activation %s", activation.Reason)
 			} else if debugger.Line() != line {
 				t.Errorf("expect line: %d, wrong line: %d", line, debugger.Line())
 			} else {
@@ -321,10 +321,10 @@ func TestDebuggerStepIn(t *testing.T) {
 			}
 		}()
 		defer debugger.Detach()
-		reason := debugger.Continue()
+		activation := debugger.Continue()
 		t.Logf("%d\n", debugger.Line())
-		if reason != DebuggerStatementActivation {
-			t.Errorf("wrong activation %s", reason)
+		if activation.Reason != DebuggerStatementActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		}
 
 		if err := debugger.StepIn(); err != nil {
@@ -374,10 +374,10 @@ func TestDebuggerExecAndPrint(t *testing.T) {
 			}
 		}()
 		defer debugger.Detach()
-		reason := debugger.Continue()
+		activation := debugger.Continue()
 		t.Logf("%d\n", debugger.Line())
-		if reason != DebuggerStatementActivation {
-			t.Errorf("wrong activation %s", reason)
+		if activation.Reason != DebuggerStatementActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		}
 		if v, err := debugger.Exec("a = false"); err != nil {
 			t.Errorf("error while executing %s", err)
@@ -416,10 +416,10 @@ func TestDebuggerList(t *testing.T) {
 			}
 		}()
 		defer debugger.Detach()
-		reason := debugger.Continue()
+		activation := debugger.Continue()
 		t.Logf("%d\n", debugger.Line())
-		if reason != DebuggerStatementActivation {
-			t.Errorf("wrong activation %s", reason)
+		if activation.Reason != DebuggerStatementActivation {
+			t.Errorf("wrong activation %s", activation.Reason)
 		}
 
 		if err := debugger.Next(); err != nil {
@@ -458,10 +458,10 @@ func TestDebuggerSimpleCaseWhereLineIsIncorrectlyReported(t *testing.T) {
 			}
 		}()
 		defer debugger.Detach()
-		reason := debugger.Continue()
+		activation := debugger.Continue()
 		t.Logf("PC: %d, Line: %d", debugger.PC(), debugger.Line())
-		if reason != DebuggerStatementActivation {
-			t.Errorf("wrong activation: %s", reason)
+		if activation.Reason != DebuggerStatementActivation {
+			t.Errorf("wrong activation: %s", activation.Reason)
 		}
 		if debugger.PC() != 2 && debugger.Line() != 1 {
 			// debugger should wait on the debugger statement and continue from there
@@ -503,7 +503,7 @@ testClosure()
 	debugger := r.AttachDebugger()
 
 	for _, line := range []int{2, 3, 4, 5, 6, 8, 11, 20, 21} {
-		if err := debugger.SetBreakpoint("test.js", line); err != nil {
+		if _, err := debugger.SetBreakpoint("test.js", line); err != nil {
 			t.Fatal(err)
 		} else {
 			t.Logf("Set breakpoint on line %d", line)
@@ -521,9 +521,9 @@ testClosure()
 		}()
 
 		for _, line := range []int{20, 4, 5, 6, 8, 11, 6, 8, 11, 6, 8, 11, 6, 8, 11, 21} {
-			reason := debugger.Continue()
-			if reason != BreakpointActivation {
-				t.Errorf("wrong activation %s", reason)
+			activation := debugger.Continue()
+			if activation.Reason != BreakpointActivation {
+				t.Errorf("wrong activation %s", activation.Reason)
 			} else if debugger.Line() != line {
 				t.Errorf("expect line: %d, wrong line: %d", line, debugger.Line())
 			} else {
