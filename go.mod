@@ -1,6 +1,6 @@
 module github.com/grafana/sobek
 
-go 1.22
+go 1.20
 
 require (
 	github.com/dlclark/regexp2 v1.11.4
