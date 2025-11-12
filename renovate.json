@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "schedule:weekly"
+  ],
+  "packageRules": [
+    {
+      "description": "GitHub Actions",
+      "matchManagers": [
+        "github-actions"
+      ]
+    },
+    {
+      "description": "Enable gomod updates with common options",
+      "matchManagers": [
+        "gomod"
+      ],
+      "enabled": true,
+      "postUpdateOptions": [
+        "gomodTidy",
+        "gomodUpdateImportPaths"
+      ]
+    },
+    {
+      "description": "Do not update indirect dependencies",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "enabled": false
+    },
+    {
+      "groupName": "ignored dependancies",
+      "description": "dependancise that Sobek users should be updating",
+      "enabled": false,
+      "matchManagers": [
+        "gomod"
+      ],
+      "matchPackageNames": [
+        "/^golang\\.org/x/",
+        "/^gopkg\\.in/yaml.v3",
+        "/^github\\.com/google/pprof"
+      ]
+    }
+  ]
+}
