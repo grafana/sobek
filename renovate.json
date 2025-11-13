@@ -5,12 +5,6 @@
   ],
   "packageRules": [
     {
-      "description": "GitHub Actions",
-      "matchManagers": [
-        "github-actions"
-      ]
-    },
-    {
       "description": "Enable gomod updates with common options",
       "matchManagers": [
         "gomod"
@@ -35,9 +29,9 @@
         "gomod"
       ],
       "matchPackageNames": [
-        "/^golang\\.org/x/",
-        "/^gopkg\\.in/yaml.v3",
-        "/^github\\.com/google/pprof"
+        "@golang.org/x/**",
+        "gopkg.in/yaml.v3",
+        "github.com/google/pprof"
       ]
     }
   ]
