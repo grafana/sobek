@@ -361,9 +361,10 @@ Since Sobek is a fork of Goja, we need to update Sobek when changes are made in 
     origin  https://github.com/grafana/sobek.git (fetch)
     origin  https://github.com/grafana/sobek.git (push)
     ```
-3. Run `git fetch --all` to fetch all changes from all remotes.
-4. Create a new branch for the merge with `git checkout -b merge-goja-master`
-5. Merge goja/master into your branch with `git merge goja/master`
-6. Review the changes with `git log --oneline -10` and `git diff origin/main..HEAD`
-7. Push the branch to `origin` and create a new PR with `git push origin merge-goja-master`
-8. **Important: Use MERGE (not rebase or squash) in the PR** -- This preserves history and helps avoid future merge conflicts
+3. Make sure you're on `main` with `git checkout main`
+4. Run `git fetch --all` to fetch all changes from all remotes.
+5. Create a new branch for the merge with `git checkout -b merge-goja-master`
+6. Merge goja/master into your branch with `git merge goja/master`
+7. Review the changes with `git log --oneline -10` and `git diff origin/main..HEAD`
+8. Push the branch to `origin` and create a new PR with `git push origin merge-goja-master`
+9. **Important: Use MERGE (not rebase or squash) in the PR** -- This preserves history and helps avoid future merge conflicts
