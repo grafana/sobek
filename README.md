@@ -333,3 +333,28 @@ NodeJS Compatibility
 --------------------
 
 There is a [separate project](https://github.com/dop251/goja_nodejs) aimed at providing some of the NodeJS functionality.
+
+Step-by-step Guide on Merging Goja back into Sobek
+--------------------------------------------------
+
+Since Sobek is a fork of Goja, we need to update Sobek when changes are made in Goja. The steps below will help you through how we bring those changes from Goja into Sobek.
+
+1. Since you're working in the Sobek repo, the assumption is that the remote is pointing to https://github.com/grafana/sobek.git as `origin`. So first we need to add Goja as a remote too, but we will call it `goja` since sobek is set to `origin`. Do this with:
+    `git remote add goja https://github.com/dop251/goja.git`
+
+    to confirm the change run `git remote -v`
+
+    which should result in:
+
+    ```shell
+    goja    https://github.com/dop251/goja.git (fetch)
+    goja    https://github.com/dop251/goja.git (push)
+    origin  https://github.com/grafana/sobek.git (fetch)
+    origin  https://github.com/grafana/sobek.git (push)
+    ```
+2. Run `git fetch --all` to fetch all changes from all remotes.
+3. Create a new branch for the merge with `git checkout -b merge-goja-master`
+4. Merge goa/master into your branch with `git merge goja/master`
+5. Review the changes with `git log --oneline -10` and `git diff origin/main..HEAD`
+6. Push the branch to `origin` and create a new PR with `git push origin merge-goja-master`
+7. **Important: Use MERGE (not rebase or squash) in the PR** -- This preserves history and helps avoid future merge conflicts
