@@ -29,7 +29,7 @@
         "gomod"
       ],
       "matchPackageNames": [
-        "@golang.org/x/**",
+        "golang.org/x/text",
         "gopkg.in/yaml.v3",
         "github.com/google/pprof"
       ]
