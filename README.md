@@ -365,6 +365,6 @@ Since Sobek is a fork of Goja, we need to update Sobek when changes are made in 
 4. Run `git fetch --all` to fetch all changes from all remotes.
 5. Create a new branch for the merge with `git checkout -b merge-goja-master`
 6. Merge goja/master into your branch with `git merge goja/master`
-7. Review the changes with `git log --oneline -10` and `git diff origin/main..HEAD`
+7. Review the changes and run tests
 8. Push the branch to `origin` and create a new PR with `git push`
 9. **Important: Use MERGE (not rebase or squash) in the PR** -- This preserves history and helps avoid future merge conflicts
