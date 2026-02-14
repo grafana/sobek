@@ -152,6 +152,8 @@ type generatorObject struct {
 	gen       generator
 	delegated *iteratorRecord
 	state     generatorState
+	returning bool
+	retVal    Value
 }
 
 func (f *nativeFuncObject) source() String {
@@ -930,7 +932,127 @@ func (g *generatorObject) next(v Value) Value {
 		v = nil
 	}
 	g.state = genStateExecuting
+	if g.returning {
+		return g.resumeReturn(v, true)
+	}
 	return g.step(g.gen.next(v))
+}
+
+func (g *generatorObject) completeReturnYield() Value {
+	vm := g.gen.vm
+	marker := vm.pop()
+	ym := marker.(*yieldMarker)
+	g.gen.ctx = execCtx{}
+	vm.pc = -vm.pc + 1
+	var res Value
+	if marker != yieldEmpty {
+		res = vm.pop()
+	}
+	vm.suspend(&g.gen.ctx, g.gen.tryStackLen, g.gen.iterStackLen, g.gen.refStackLen)
+	vm.sp = vm.sb - 1
+	vm.callStack = vm.callStack[:len(vm.callStack)-1]
+	vm.popTryFrame()
+	vm.popCtx()
+	switch ym.resultType {
+	case resultYield:
+		g.state = genStateSuspendedYield
+		return g.val.runtime.createIterResultObject(res, false)
+	case resultYieldDelegate:
+		g.state = genStateSuspendedYield
+		return g.delegate(res)
+	case resultYieldRes:
+		g.state = genStateSuspendedYieldRes
+		return g.val.runtime.createIterResultObject(res, false)
+	case resultYieldDelegateRes:
+		g.state = genStateSuspendedYieldRes
+		return g.delegate(res)
+	default:
+		panic(g.val.runtime.NewTypeError("Runtime bug: unexpected result type: %v", ym.resultType))
+	}
+}
+
+func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
+	g.gen.enterNext()
+	if v != nil {
+		g.gen.vm.push(v)
+	}
+
+	vm := g.gen.vm
+	var ex *Exception
+	if continueCurrent {
+		for {
+			ex1 := vm.runTryInner()
+			if ex1 != nil {
+				ex = ex1
+				break
+			}
+			if vm.halted() {
+				if _, ok := vm.peek().(*yieldMarker); ok {
+					return g.completeReturnYield()
+				}
+				break
+			}
+		}
+	}
+
+	for len(vm.tryStack) > 0 {
+		tf := &vm.tryStack[len(vm.tryStack)-1]
+		if int(tf.callStackLen) != len(vm.callStack) {
+			break
+		}
+
+		if tf.finallyPos >= 0 {
+			vm.sp = int(tf.sp)
+			vm.stash = tf.stash
+			vm.privEnv = tf.privEnv
+			ex1 := vm.restoreStacks(tf.iterLen, tf.refLen)
+			if ex1 != nil {
+				ex = ex1
+				vm.popTryFrame()
+				continue
+			}
+
+			vm.pc = int(tf.finallyPos)
+			tf.catchPos = tryPanicMarker
+			tf.finallyPos = -1
+			tf.finallyRet = -2 // -1 would cause it to continue after leaveFinally
+			for {
+				ex1 := vm.runTryInner()
+				if ex1 != nil {
+					ex = ex1
+					vm.popTryFrame()
+					break
+				}
+				if vm.halted() {
+					if _, ok := vm.peek().(*yieldMarker); ok {
+						return g.completeReturnYield()
+					}
+					break
+				}
+			}
+		} else {
+			vm.popTryFrame()
+		}
+	}
+
+	g.returning = false
+	g.state = genStateCompleted
+
+	vm.popTryFrame()
+
+	if ex == nil {
+		ex = vm.restoreStacks(g.gen.iterStackLen, g.gen.refStackLen)
+	}
+
+	if ex != nil {
+		panic(ex)
+	}
+
+	vm.callStack = vm.callStack[:len(vm.callStack)-1]
+	vm.sp = vm.sb - 1
+	vm.popCtx()
+
+	return g.val.runtime.createIterResultObject(g.retVal, true)
 }
 
 func (g *generatorObject) throw(v Value) Value {
@@ -971,6 +1093,7 @@ func (g *generatorObject) _return(v Value) Value {
 	}
 
 	if g.state == genStateCompleted {
+		g.returning = false
 		return g.val.runtime.createIterResultObject(v, true)
 	}
 
@@ -990,66 +1113,10 @@ func (g *generatorObject) _return(v Value) Value {
 		}
 	}
 
+	g.retVal = v
+	g.returning = true
 	g.state = genStateExecuting
-
-	g.gen.enterNext()
-
-	vm := g.gen.vm
-	var ex *Exception
-	for len(vm.tryStack) > 0 {
-		tf := &vm.tryStack[len(vm.tryStack)-1]
-		if int(tf.callStackLen) != len(vm.callStack) {
-			break
-		}
-
-		if tf.finallyPos >= 0 {
-			vm.sp = int(tf.sp)
-			vm.stash = tf.stash
-			vm.privEnv = tf.privEnv
-			ex1 := vm.restoreStacks(tf.iterLen, tf.refLen)
-			if ex1 != nil {
-				ex = ex1
-				vm.popTryFrame()
-				continue
-			}
-
-			vm.pc = int(tf.finallyPos)
-			tf.catchPos = tryPanicMarker
-			tf.finallyPos = -1
-			tf.finallyRet = -2 // -1 would cause it to continue after leaveFinally
-			for {
-				ex1 := vm.runTryInner()
-				if ex1 != nil {
-					ex = ex1
-					vm.popTryFrame()
-					break
-				}
-				if vm.halted() {
-					break
-				}
-			}
-		} else {
-			vm.popTryFrame()
-		}
-	}
-
-	g.state = genStateCompleted
-
-	vm.popTryFrame()
-
-	if ex == nil {
-		ex = vm.restoreStacks(g.gen.iterStackLen, g.gen.refStackLen)
-	}
-
-	if ex != nil {
-		panic(ex)
-	}
-
-	vm.callStack = vm.callStack[:len(vm.callStack)-1]
-	vm.sp = vm.sb - 1
-	vm.popCtx()
-
-	return g.val.runtime.createIterResultObject(v, true)
+	return g.resumeReturn(nil, false)
 }
 
 func (f *baseJsFuncObject) generatorCall(vmCall func(*vm, int), nArgs int) Value {
