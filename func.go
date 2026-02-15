@@ -978,6 +978,11 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 	}
 
 	vm := g.gen.vm
+	// Save the caller's sp now, before any code runs that might corrupt vm.sb.
+	// After enterNext() -> resume(), vm.sb = caller_sp + 1, so caller_sp = vm.sb - 1.
+	// We need this because running finally blocks can call functions that modify vm.sb,
+	// and by the time we reach the completion code, vm.sb might be invalid.
+	callerSp := vm.sb - 1
 	var ex *Exception
 	if continueCurrent {
 		for {
@@ -1049,7 +1054,7 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 	}
 
 	vm.callStack = vm.callStack[:len(vm.callStack)-1]
-	vm.sp = vm.sb - 1
+	vm.sp = callerSp
 	vm.popCtx()
 
 	return g.val.runtime.createIterResultObject(g.retVal, true)

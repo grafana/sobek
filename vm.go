@@ -94,9 +94,6 @@ func (vm *vm) suspend(ectx *execCtx, tryStackLen, iterStackLen, refStackLen uint
 func (vm *vm) resume(ctx *execCtx) {
 	vm.restoreCtx(&ctx.context)
 	sp := vm.sp
-	if sp < 0 {
-		panic("vm.resume: sp underflow - callback context bug")
-	}
 	vm.sb = sp + 1
 	vm.stack.expand(sp + len(ctx.stack))
 	copy(vm.stack[sp:], ctx.stack)
