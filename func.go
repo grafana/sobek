@@ -938,7 +938,19 @@ func (g *generatorObject) next(v Value) Value {
 	return g.step(g.gen.next(v))
 }
 
-func (g *generatorObject) completeReturnYield() Value {
+func (g *generatorObject) captureReturnValue(retVal Value) {
+	if retVal != _undefined || g.retVal == nil || g.retVal == _undefined {
+		g.retVal = retVal
+	}
+}
+
+func popSentinelCallFrame(vm *vm) {
+	if l := len(vm.callStack); l > 0 && vm.callStack[l-1].pc == -2 {
+		vm.callStack = vm.callStack[:l-1]
+	}
+}
+
+func (g *generatorObject) completeReturnYield(callerSp int) Value {
 	vm := g.gen.vm
 	marker := vm.pop()
 	ym := marker.(*yieldMarker)
@@ -949,8 +961,8 @@ func (g *generatorObject) completeReturnYield() Value {
 		res = vm.pop()
 	}
 	vm.suspend(&g.gen.ctx, g.gen.tryStackLen, g.gen.iterStackLen, g.gen.refStackLen)
-	vm.sp = vm.sb - 1
-	vm.callStack = vm.callStack[:len(vm.callStack)-1]
+	vm.sp = callerSp
+	popSentinelCallFrame(vm)
 	vm.popTryFrame()
 	vm.popCtx()
 	switch ym.resultType {
@@ -993,12 +1005,9 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 			}
 			if vm.halted() {
 				if _, ok := vm.peek().(*yieldMarker); ok {
-					return g.completeReturnYield()
+					return g.completeReturnYield(callerSp)
 				}
-				retVal := vm.pop()
-				if retVal != _undefined || g.retVal == nil || g.retVal == _undefined {
-					g.retVal = retVal
-				}
+				g.captureReturnValue(vm.pop())
 				break
 			}
 		}
@@ -1034,12 +1043,9 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 				}
 				if vm.halted() {
 					if _, ok := vm.peek().(*yieldMarker); ok {
-						return g.completeReturnYield()
+						return g.completeReturnYield(callerSp)
 					}
-					retVal := vm.pop()
-					if retVal != _undefined || g.retVal == nil || g.retVal == _undefined {
-						g.retVal = retVal
-					}
+					g.captureReturnValue(vm.pop())
 					break
 				}
 			}
@@ -1061,9 +1067,7 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 		panic(ex)
 	}
 
-	if l := len(vm.callStack); l > 0 && vm.callStack[l-1].pc == -2 {
-		vm.callStack = vm.callStack[:l-1]
-	}
+	popSentinelCallFrame(vm)
 	vm.sp = callerSp
 	vm.popCtx()
 
