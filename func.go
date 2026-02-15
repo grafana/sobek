@@ -995,12 +995,16 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 				if _, ok := vm.peek().(*yieldMarker); ok {
 					return g.completeReturnYield()
 				}
+				retVal := vm.pop()
+				if retVal != _undefined || g.retVal == nil || g.retVal == _undefined {
+					g.retVal = retVal
+				}
 				break
 			}
 		}
 	}
 
-	for len(vm.tryStack) > 0 {
+	for len(vm.tryStack) > int(g.gen.tryStackLen) {
 		tf := &vm.tryStack[len(vm.tryStack)-1]
 		if int(tf.callStackLen) != len(vm.callStack) {
 			break
@@ -1032,6 +1036,10 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 					if _, ok := vm.peek().(*yieldMarker); ok {
 						return g.completeReturnYield()
 					}
+					retVal := vm.pop()
+					if retVal != _undefined || g.retVal == nil || g.retVal == _undefined {
+						g.retVal = retVal
+					}
 					break
 				}
 			}
@@ -1053,7 +1061,9 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 		panic(ex)
 	}
 
-	vm.callStack = vm.callStack[:len(vm.callStack)-1]
+	if l := len(vm.callStack); l > 0 && vm.callStack[l-1].pc == -2 {
+		vm.callStack = vm.callStack[:l-1]
+	}
 	vm.sp = callerSp
 	vm.popCtx()
 

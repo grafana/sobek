@@ -356,8 +356,6 @@ func TestGeneratorReturnFinallyThrowsAfterYield(t *testing.T) {
 }
 
 func TestGeneratorReturnFinallyReturnOverridesValue(t *testing.T) {
-	t.Skip("Known issue: return in finally during generator.return() panics; tracked as follow-up")
-
 	vm := New()
 
 	script := `
