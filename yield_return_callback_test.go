@@ -211,6 +211,71 @@ func TestGeneratorReturnFromPromiseHandler(t *testing.T) {
 	}
 }
 
+// TestGeneratorReturnThenThrowPreservesJobQueue ensures that callback context
+// remains valid after generator.return() yields from finally and a subsequent
+// throw/catch occurs in the same job. If context restoration is wrong, later
+// queued jobs may stop running.
+func TestGeneratorReturnThenThrowPreservesJobQueue(t *testing.T) {
+	vm := New()
+
+	_, err := vm.RunString(`
+		var steps = [];
+		var done = false;
+
+		function* myGen() {
+			try {
+				yield "working";
+			} finally {
+				steps.push("finally-enter");
+				yield "cleanup";
+				steps.push("finally-exit");
+			}
+		}
+
+		var gen = myGen();
+		gen.next();
+
+		Promise.resolve().then(function() {
+			steps.push("job1-start");
+			try {
+				var r1 = gen.return("cancelled");
+				steps.push("r1:" + r1.value + ":" + r1.done);
+				var r2 = gen.next();
+				steps.push("r2:" + r2.value + ":" + r2.done);
+				throw new Error("child failed");
+			} catch (e) {
+				steps.push("caught:" + e.message);
+			}
+			steps.push("job1-end");
+		});
+
+		Promise.resolve().then(function() {
+			steps.push("job2");
+			done = true;
+		});
+	`)
+	if err != nil {
+		t.Fatalf("Setup failed: %v", err)
+	}
+
+	vm.RunString(`null`) // Drain microtasks
+
+	steps, _ := vm.RunString(`steps.join(",")`)
+	done, _ := vm.RunString(`done`)
+
+	if !done.ToBoolean() {
+		t.Fatalf("expected second job to run; steps=%q", steps.String())
+	}
+
+	got := steps.String()
+	if got == "" {
+		t.Fatal("expected non-empty steps")
+	}
+	if got != "job1-start,finally-enter,r1:cleanup:false,finally-exit,r2:cancelled:true,caught:child failed,job1-end,job2" {
+		t.Fatalf("unexpected steps: %q", got)
+	}
+}
+
 // TestGeneratorReturnFromAsyncFunction tests generator.return() being called
 // from within an async function, which is how K6 VU iterations work.
 // The async function creates a different VM stack context.
