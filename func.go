@@ -754,6 +754,7 @@ type generator struct {
 	vm  *vm
 
 	tryStackLen, iterStackLen, refStackLen uint32
+	sentinelCallStackLen                   int
 }
 
 func (g *generator) storeLengths() {
@@ -798,6 +799,7 @@ func (g *generator) enterNext() {
 	g.vm.pushCtx()
 	g.vm.pushTryFrame(tryPanicMarker, -1)
 	g.vm.callStack = append(g.vm.callStack, context{pc: -2}) // extra frame so that vm.run() halts after ret
+	g.sentinelCallStackLen = len(g.vm.callStack)
 	g.storeLengths()
 	g.vm.resume(&g.ctx)
 }
@@ -944,10 +946,30 @@ func (g *generatorObject) captureReturnValue(retVal Value) {
 	}
 }
 
-func popSentinelCallFrame(vm *vm) {
-	if l := len(vm.callStack); l > 0 && vm.callStack[l-1].pc == -2 {
-		vm.callStack = vm.callStack[:l-1]
+func (g *generator) popSentinelCallFrame() {
+	if g.sentinelCallStackLen <= 0 {
+		return
 	}
+
+	vm := g.vm
+	if len(vm.callStack) < g.sentinelCallStackLen {
+		return
+	}
+
+	idx := g.sentinelCallStackLen - 1
+	if vm.callStack[idx].pc != -2 {
+		for i := len(vm.callStack) - 1; i >= 0; i-- {
+			if vm.callStack[i].pc == -2 {
+				idx = i
+				break
+			}
+		}
+	}
+
+	for i := idx; i < len(vm.callStack); i++ {
+		vm.callStack[i] = context{}
+	}
+	vm.callStack = vm.callStack[:idx]
 }
 
 func (g *generatorObject) completeReturnYield(callerSp int) Value {
@@ -962,7 +984,7 @@ func (g *generatorObject) completeReturnYield(callerSp int) Value {
 	}
 	vm.suspend(&g.gen.ctx, g.gen.tryStackLen, g.gen.iterStackLen, g.gen.refStackLen)
 	vm.sp = callerSp
-	popSentinelCallFrame(vm)
+	g.gen.popSentinelCallFrame()
 	vm.popTryFrame()
 	vm.popCtx()
 	switch ym.resultType {
@@ -1067,7 +1089,7 @@ func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
 		panic(ex)
 	}
 
-	popSentinelCallFrame(vm)
+	g.gen.popSentinelCallFrame()
 	vm.sp = callerSp
 	vm.popCtx()
 
