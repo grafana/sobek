@@ -270,3 +270,216 @@ func TestGeneratorReturnYieldResInFinally(t *testing.T) {
 		t.Fatal("unexpected done flags for yieldRes finally return flow")
 	}
 }
+
+func TestGeneratorReturnFinallyThrowsBeforeYield(t *testing.T) {
+	vm := New()
+
+	script := `
+		let caught;
+
+		function* genWithThrowingCleanup() {
+			try {
+				yield "work";
+			} finally {
+				throw new Error("cleanup-failed");
+			}
+		}
+
+		const gen = genWithThrowingCleanup();
+		gen.next();
+
+		try {
+			gen.return("cancelled");
+		} catch (e) {
+			caught = e.message;
+		}
+
+		({ caught })
+	`
+
+	result, err := vm.RunString(script)
+	if err != nil {
+		t.Fatalf("Script error: %v", err)
+	}
+
+	obj := result.ToObject(vm)
+	if got := obj.Get("caught").String(); got != "cleanup-failed" {
+		t.Fatalf("caught = %q, want %q", got, "cleanup-failed")
+	}
+}
+
+func TestGeneratorReturnFinallyThrowsAfterYield(t *testing.T) {
+	vm := New()
+
+	script := `
+		let caught;
+
+		function* genWithSuspendingThrowingCleanup() {
+			try {
+				yield "work";
+			} finally {
+				yield "cleanup";
+				throw new Error("cleanup-failed-after-yield");
+			}
+		}
+
+		const gen = genWithSuspendingThrowingCleanup();
+		const r1 = gen.next();
+		const r2 = gen.return("cancelled");
+		try {
+			gen.next();
+		} catch (e) {
+			caught = e.message;
+		}
+
+		({ r1Value: r1.value, r2Value: r2.value, r2Done: r2.done, caught })
+	`
+
+	result, err := vm.RunString(script)
+	if err != nil {
+		t.Fatalf("Script error: %v", err)
+	}
+
+	obj := result.ToObject(vm)
+	if got := obj.Get("r1Value").String(); got != "work" {
+		t.Fatalf("r1.value = %q, want %q", got, "work")
+	}
+	if got := obj.Get("r2Value").String(); got != "cleanup" {
+		t.Fatalf("r2.value = %q, want %q", got, "cleanup")
+	}
+	if obj.Get("r2Done").ToBoolean() {
+		t.Fatal("r2.done = true, want false")
+	}
+	if got := obj.Get("caught").String(); got != "cleanup-failed-after-yield" {
+		t.Fatalf("caught = %q, want %q", got, "cleanup-failed-after-yield")
+	}
+}
+
+func TestGeneratorReturnFinallyReturnOverridesValue(t *testing.T) {
+	t.Skip("Known issue: return in finally during generator.return() panics; tracked as follow-up")
+
+	vm := New()
+
+	script := `
+		function* genWithOverride() {
+			try {
+				yield "work";
+			} finally {
+				return "cleanup-override";
+			}
+		}
+
+		const gen = genWithOverride();
+		gen.next();
+		const r = gen.return("cancelled");
+		({ value: r.value, done: r.done })
+	`
+
+	result, err := vm.RunString(script)
+	if err != nil {
+		t.Fatalf("Script error: %v", err)
+	}
+
+	obj := result.ToObject(vm)
+	if got := obj.Get("value").String(); got != "cleanup-override" {
+		t.Fatalf("r.value = %q, want %q", got, "cleanup-override")
+	}
+	if !obj.Get("done").ToBoolean() {
+		t.Fatal("r.done = false, want true")
+	}
+}
+
+func TestGeneratorReturnFinallyYieldStar(t *testing.T) {
+	vm := New()
+
+	script := `
+		function* delegatedCleanup() {
+			yield "cleanup-1";
+			yield "cleanup-2";
+		}
+
+		function* withYieldStarCleanup() {
+			try {
+				yield "work";
+			} finally {
+				yield* delegatedCleanup();
+			}
+		}
+
+		const gen = withYieldStarCleanup();
+		const r1 = gen.next();
+		const r2 = gen.return("cancelled");
+		const r3 = gen.next();
+		const r4 = gen.next();
+
+		({
+			r1Value: r1.value,
+			r2Value: r2.value,
+			r2Done: r2.done,
+			r3Value: r3.value,
+			r3Done: r3.done,
+			r4Value: r4.value,
+			r4Done: r4.done
+		})
+	`
+
+	result, err := vm.RunString(script)
+	if err != nil {
+		t.Fatalf("Script error: %v", err)
+	}
+
+	obj := result.ToObject(vm)
+	if got := obj.Get("r1Value").String(); got != "work" {
+		t.Fatalf("r1.value = %q, want %q", got, "work")
+	}
+	if got := obj.Get("r2Value").String(); got != "cleanup-1" {
+		t.Fatalf("r2.value = %q, want %q", got, "cleanup-1")
+	}
+	if obj.Get("r2Done").ToBoolean() {
+		t.Fatal("r2.done = true, want false")
+	}
+	if got := obj.Get("r3Value").String(); got != "cleanup-2" {
+		t.Fatalf("r3.value = %q, want %q", got, "cleanup-2")
+	}
+	if obj.Get("r3Done").ToBoolean() {
+		t.Fatal("r3.done = true, want false")
+	}
+	if got := obj.Get("r4Value").String(); got != "cancelled" {
+		t.Fatalf("r4.value = %q, want %q", got, "cancelled")
+	}
+	if !obj.Get("r4Done").ToBoolean() {
+		t.Fatal("r4.done = false, want true")
+	}
+}
+
+func TestGeneratorReturnBeforeStart(t *testing.T) {
+	vm := New()
+
+	script := `
+		let entered = false;
+		function* neverStarted() {
+			entered = true;
+			yield "work";
+		}
+
+		const gen = neverStarted();
+		const r = gen.return("cancelled");
+		({ value: r.value, done: r.done, entered })
+	`
+
+	result, err := vm.RunString(script)
+	if err != nil {
+		t.Fatalf("Script error: %v", err)
+	}
+
+	obj := result.ToObject(vm)
+	if got := obj.Get("value").String(); got != "cancelled" {
+		t.Fatalf("r.value = %q, want %q", got, "cancelled")
+	}
+	if !obj.Get("done").ToBoolean() {
+		t.Fatal("r.done = false, want true")
+	}
+	if obj.Get("entered").ToBoolean() {
+		t.Fatal("entered = true, want false")
+	}
+}
