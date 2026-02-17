@@ -17,6 +17,11 @@ import (
 
 const (
 	tc39BASE = "testdata/test262"
+
+	// localTestsBase contains test262-format tests maintained locally by Sobek
+	// These tests fill gaps in the upstream test262 suite and are candidates
+	// for contribution to tc39/test262
+	localTestsBase = "testdata"
 )
 
 var (
@@ -996,4 +1001,24 @@ func TestTC39(t *testing.T) {
 			fmt.Printf("%s\t%d\n", item.name, item.duration/time.Millisecond)
 		}
 	}
+}
+
+// TestGeneratorPrototypeReturn runs test262-format tests for generator.return()
+// that fill gaps in the upstream test262 suite. These tests verify that
+// yield in finally blocks during generator.return() works per ECMAScript spec.
+func TestGeneratorPrototypeReturn(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
+	ctx := &tc39TestCtx{
+		base: localTestsBase,
+	}
+	ctx.init()
+
+	t.Run("GeneratorPrototype/return", func(t *testing.T) {
+		ctx.t = t
+		ctx.runTC39Tests("GeneratorPrototype/return")
+		ctx.flush()
+	})
 }
