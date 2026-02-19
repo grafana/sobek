@@ -15,6 +15,55 @@ func TestTaggedTemplateArgExport(t *testing.T) {
 	vm.RunString("f`test`")
 }
 
+func TestVMHaltedWithNilProgram(t *testing.T) {
+	r := &Runtime{}
+	r.init()
+
+	vm := r.vm
+	vm.prg = nil
+	vm.pc = 0
+
+	if !vm.halted() {
+		t.Fatal("expected halted() to return true when vm.prg is nil")
+	}
+}
+
+func TestVMRunWithNilProgramDoesNotPanic(t *testing.T) {
+	r := &Runtime{}
+	r.init()
+
+	vm := r.vm
+	vm.prg = nil
+	vm.pc = 0
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.Fatalf("vm.run() panicked with nil program: %v", recovered)
+		}
+	}()
+
+	vm.run()
+}
+
+func TestExceptionFromTypedNil(t *testing.T) {
+	r := &Runtime{}
+	r.init()
+
+	vm := r.vm
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.Fatalf("exceptionFromValue() panicked on typed nil *Exception: %v", recovered)
+		}
+	}()
+
+	var ex *Exception
+	got := vm.exceptionFromValue(ex)
+	if got != nil {
+		t.Fatalf("expected nil exception for typed nil input, got: %#v", got)
+	}
+}
+
 func TestVM1(t *testing.T) {
 	r := &Runtime{}
 	r.init()

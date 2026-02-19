@@ -152,6 +152,8 @@ type generatorObject struct {
 	gen       generator
 	delegated *iteratorRecord
 	state     generatorState
+	returning bool
+	retVal    Value
 }
 
 func (f *nativeFuncObject) source() String {
@@ -752,6 +754,7 @@ type generator struct {
 	vm  *vm
 
 	tryStackLen, iterStackLen, refStackLen uint32
+	sentinelCallStackLen                   int
 }
 
 func (g *generator) storeLengths() {
@@ -796,6 +799,7 @@ func (g *generator) enterNext() {
 	g.vm.pushCtx()
 	g.vm.pushTryFrame(tryPanicMarker, -1)
 	g.vm.callStack = append(g.vm.callStack, context{pc: -2}) // extra frame so that vm.run() halts after ret
+	g.sentinelCallStackLen = len(g.vm.callStack)
 	g.storeLengths()
 	g.vm.resume(&g.ctx)
 }
@@ -930,7 +934,166 @@ func (g *generatorObject) next(v Value) Value {
 		v = nil
 	}
 	g.state = genStateExecuting
+	if g.returning {
+		return g.resumeReturn(v, true)
+	}
 	return g.step(g.gen.next(v))
+}
+
+func (g *generatorObject) captureReturnValue(retVal Value) {
+	if retVal != _undefined || g.retVal == nil || g.retVal == _undefined {
+		g.retVal = retVal
+	}
+}
+
+func (g *generator) popSentinelCallFrame() {
+	if g.sentinelCallStackLen <= 0 {
+		return
+	}
+
+	vm := g.vm
+	if len(vm.callStack) < g.sentinelCallStackLen {
+		return
+	}
+
+	idx := g.sentinelCallStackLen - 1
+	if vm.callStack[idx].pc != -2 {
+		for i := len(vm.callStack) - 1; i >= 0; i-- {
+			if vm.callStack[i].pc == -2 {
+				idx = i
+				break
+			}
+		}
+	}
+
+	for i := idx; i < len(vm.callStack); i++ {
+		vm.callStack[i] = context{}
+	}
+	vm.callStack = vm.callStack[:idx]
+}
+
+func (g *generatorObject) completeReturnYield(callerSp int) Value {
+	vm := g.gen.vm
+	marker := vm.pop()
+	ym := marker.(*yieldMarker)
+	g.gen.ctx = execCtx{}
+	vm.pc = -vm.pc + 1
+	var res Value
+	if marker != yieldEmpty {
+		res = vm.pop()
+	}
+	vm.suspend(&g.gen.ctx, g.gen.tryStackLen, g.gen.iterStackLen, g.gen.refStackLen)
+	vm.sp = callerSp
+	g.gen.popSentinelCallFrame()
+	vm.popTryFrame()
+	vm.popCtx()
+	switch ym.resultType {
+	case resultYield:
+		g.state = genStateSuspendedYield
+		return g.val.runtime.createIterResultObject(res, false)
+	case resultYieldDelegate:
+		g.state = genStateSuspendedYield
+		return g.delegate(res)
+	case resultYieldRes:
+		g.state = genStateSuspendedYieldRes
+		return g.val.runtime.createIterResultObject(res, false)
+	case resultYieldDelegateRes:
+		g.state = genStateSuspendedYieldRes
+		return g.delegate(res)
+	default:
+		panic(g.val.runtime.NewTypeError("Runtime bug: unexpected result type: %v", ym.resultType))
+	}
+}
+
+func (g *generatorObject) resumeReturn(v Value, continueCurrent bool) Value {
+	g.gen.enterNext()
+	if v != nil {
+		g.gen.vm.push(v)
+	}
+
+	vm := g.gen.vm
+	// Save the caller's sp now, before any code runs that might corrupt vm.sb.
+	// After enterNext() -> resume(), vm.sb = caller_sp + 1, so caller_sp = vm.sb - 1.
+	// We need this because running finally blocks can call functions that modify vm.sb,
+	// and by the time we reach the completion code, vm.sb might be invalid.
+	callerSp := vm.sb - 1
+	var ex *Exception
+	if continueCurrent {
+		for {
+			ex1 := vm.runTryInner()
+			if ex1 != nil {
+				ex = ex1
+				break
+			}
+			if vm.halted() {
+				if _, ok := vm.peek().(*yieldMarker); ok {
+					return g.completeReturnYield(callerSp)
+				}
+				g.captureReturnValue(vm.pop())
+				break
+			}
+		}
+	}
+
+	for len(vm.tryStack) > int(g.gen.tryStackLen) {
+		tf := &vm.tryStack[len(vm.tryStack)-1]
+		if int(tf.callStackLen) != len(vm.callStack) {
+			break
+		}
+
+		if tf.finallyPos >= 0 {
+			vm.sp = int(tf.sp)
+			vm.stash = tf.stash
+			vm.privEnv = tf.privEnv
+			ex1 := vm.restoreStacks(tf.iterLen, tf.refLen)
+			if ex1 != nil {
+				ex = ex1
+				vm.popTryFrame()
+				continue
+			}
+
+			vm.pc = int(tf.finallyPos)
+			tf.catchPos = tryPanicMarker
+			tf.finallyPos = -1
+			tf.finallyRet = -2 // -1 would cause it to continue after leaveFinally
+			for {
+				ex1 := vm.runTryInner()
+				if ex1 != nil {
+					ex = ex1
+					vm.popTryFrame()
+					break
+				}
+				if vm.halted() {
+					if _, ok := vm.peek().(*yieldMarker); ok {
+						return g.completeReturnYield(callerSp)
+					}
+					g.captureReturnValue(vm.pop())
+					break
+				}
+			}
+		} else {
+			vm.popTryFrame()
+		}
+	}
+
+	g.returning = false
+	g.state = genStateCompleted
+
+	vm.popTryFrame()
+
+	if ex == nil {
+		ex = vm.restoreStacks(g.gen.iterStackLen, g.gen.refStackLen)
+	}
+
+	if ex != nil {
+		panic(ex)
+	}
+
+	g.gen.popSentinelCallFrame()
+	vm.sp = callerSp
+	vm.popCtx()
+
+	return g.val.runtime.createIterResultObject(g.retVal, true)
 }
 
 func (g *generatorObject) throw(v Value) Value {
@@ -971,6 +1134,7 @@ func (g *generatorObject) _return(v Value) Value {
 	}
 
 	if g.state == genStateCompleted {
+		g.returning = false
 		return g.val.runtime.createIterResultObject(v, true)
 	}
 
@@ -990,66 +1154,10 @@ func (g *generatorObject) _return(v Value) Value {
 		}
 	}
 
+	g.retVal = v
+	g.returning = true
 	g.state = genStateExecuting
-
-	g.gen.enterNext()
-
-	vm := g.gen.vm
-	var ex *Exception
-	for len(vm.tryStack) > 0 {
-		tf := &vm.tryStack[len(vm.tryStack)-1]
-		if int(tf.callStackLen) != len(vm.callStack) {
-			break
-		}
-
-		if tf.finallyPos >= 0 {
-			vm.sp = int(tf.sp)
-			vm.stash = tf.stash
-			vm.privEnv = tf.privEnv
-			ex1 := vm.restoreStacks(tf.iterLen, tf.refLen)
-			if ex1 != nil {
-				ex = ex1
-				vm.popTryFrame()
-				continue
-			}
-
-			vm.pc = int(tf.finallyPos)
-			tf.catchPos = tryPanicMarker
-			tf.finallyPos = -1
-			tf.finallyRet = -2 // -1 would cause it to continue after leaveFinally
-			for {
-				ex1 := vm.runTryInner()
-				if ex1 != nil {
-					ex = ex1
-					vm.popTryFrame()
-					break
-				}
-				if vm.halted() {
-					break
-				}
-			}
-		} else {
-			vm.popTryFrame()
-		}
-	}
-
-	g.state = genStateCompleted
-
-	vm.popTryFrame()
-
-	if ex == nil {
-		ex = vm.restoreStacks(g.gen.iterStackLen, g.gen.refStackLen)
-	}
-
-	if ex != nil {
-		panic(ex)
-	}
-
-	vm.callStack = vm.callStack[:len(vm.callStack)-1]
-	vm.sp = vm.sb - 1
-	vm.popCtx()
-
-	return g.val.runtime.createIterResultObject(v, true)
+	return g.resumeReturn(nil, false)
 }
 
 func (f *baseJsFuncObject) generatorCall(vmCall func(*vm, int), nArgs int) Value {

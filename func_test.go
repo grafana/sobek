@@ -47,6 +47,50 @@ func TestFuncPrototypeRedefine(t *testing.T) {
 	testScript(SCRIPT, valueTrue, t)
 }
 
+func TestGeneratorPopSentinelCallFrameRemovesSentinelTail(t *testing.T) {
+	r := New()
+	vm := r.vm
+
+	vm.callStack = []context{
+		{pc: 1},
+		{pc: 2},
+		{pc: -2},
+		{pc: 99},
+	}
+
+	g := generator{vm: vm, sentinelCallStackLen: 3}
+	g.popSentinelCallFrame()
+
+	if len(vm.callStack) != 2 {
+		t.Fatalf("expected callStack len 2, got %d", len(vm.callStack))
+	}
+	if vm.callStack[0].pc != 1 || vm.callStack[1].pc != 2 {
+		t.Fatalf("unexpected remaining callStack: %#v", vm.callStack)
+	}
+}
+
+func TestGeneratorPopSentinelCallFrameFallsBackToScan(t *testing.T) {
+	r := New()
+	vm := r.vm
+
+	vm.callStack = []context{
+		{pc: 1},
+		{pc: -2},
+		{pc: 100},
+	}
+
+	// Deliberately point past the sentinel to exercise fallback scan.
+	g := generator{vm: vm, sentinelCallStackLen: 3}
+	g.popSentinelCallFrame()
+
+	if len(vm.callStack) != 1 {
+		t.Fatalf("expected callStack len 1, got %d", len(vm.callStack))
+	}
+	if vm.callStack[0].pc != 1 {
+		t.Fatalf("unexpected remaining frame: %#v", vm.callStack[0])
+	}
+}
+
 func TestFuncExport(t *testing.T) {
 	vm := New()
 	typ := reflect.TypeOf((func(FunctionCall) Value)(nil))

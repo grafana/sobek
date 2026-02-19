@@ -613,6 +613,9 @@ func (vm *vm) init() {
 }
 
 func (vm *vm) halted() bool {
+	if vm.prg == nil {
+		return true
+	}
 	pc := vm.pc
 	return pc < 0 || pc >= len(vm.prg.code)
 }
@@ -633,6 +636,9 @@ func (vm *vm) run() {
 			count--
 		}
 		if interrupted = atomic.LoadUint32(&vm.interrupted) != 0; interrupted {
+			break
+		}
+		if vm.prg == nil {
 			break
 		}
 		pc := vm.pc
@@ -667,6 +673,9 @@ func (vm *vm) runWithProfiler() bool {
 	for {
 		if interrupted = atomic.LoadUint32(&vm.interrupted) != 0; interrupted {
 			return true
+		}
+		if vm.prg == nil {
+			break
 		}
 		pc := vm.pc
 		if pc < 0 || pc >= len(vm.prg.code) {
@@ -5979,6 +5988,9 @@ func (vm *vm) exceptionFromValue(x interface{}) *Exception {
 			val: x1,
 		}
 	case *Exception:
+		if x1 == nil {
+			return nil
+		}
 		ex = x1
 	case typeError:
 		ex = &Exception{
