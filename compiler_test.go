@@ -1022,6 +1022,84 @@ func TestTryReturnFromCatch(t *testing.T) {
 	testScript(SCRIPT, valueInt(42), t)
 }
 
+// TestTryFinallyReturnLexicalScopeWithGoCallback reproduces a panic when a
+// return statement inside a try block (with a finally clause) is preceded by
+// a Go→JS callback invocation that forces a lexical binding into the stash.
+// The return triggers leaveTry which jumps to the finally block, but the
+// inner block scope's stash is not cleaned up, causing loadStashLex in the
+// finally block to access the wrong stash and panic with an index-out-of-range.
+// See https://github.com/grafana/k6/issues/5713
+func TestTryFinallyReturnLexicalScopeWithGoCallback(t *testing.T) {
+	r := New()
+
+	// "group" mimics k6's group(): a Go function that calls a JS callback
+	// via AssertFunction, which goes through runWrapped → vm.try → __call.
+	r.Set("group", func(call FunctionCall) Value {
+		fn, ok := AssertFunction(call.Argument(1))
+		if !ok {
+			panic(r.NewTypeError("second argument must be a function"))
+		}
+		ret, err := fn(Undefined(), call.Argument(0))
+		if err != nil {
+			panic(err)
+		}
+		return ret
+	})
+
+	// This is the exact reproduction from k6#5713.
+	// In k6, the module code runs inside a function scope (the module wrapper),
+	// so const bindings like 'finalizer' end up in a stash (not as globals).
+	// The default export function is then called via AssertFunction from Go.
+	// The const declaration inside the try body creates a block scope with its
+	// own stash. The closure passed to group() captures 'work', forcing it
+	// into that stash. The return inside the try triggers leaveTry → finally,
+	// but without scope cleanup the stash chain is wrong when finalizer()
+	// is resolved via loadStashLex, causing an index-out-of-range panic.
+	// Wrapping in an IIFE simulates k6's module wrapper function scope.
+	// This ensures 'finalizer' is a stash-based lexical binding, not a
+	// global dynamic binding. Multiple const bindings (a, b, finalizer)
+	// push finalizer to stash index 2, so when the inner block stash
+	// (with only 1 slot) is incorrectly left on the chain, loadStashLex
+	// accesses index 2 in a stash of length 1, causing a panic.
+	v, err := r.RunString(`
+		(function() {
+			const a = () => 1;
+			const b = () => 2;
+			const finalizer = () => {};
+
+			return function defaultFn() {
+				try {
+					const work = () => {};
+
+					group("Home page", function () {
+						work();
+					});
+
+					if (2 > Math.random()) {
+						return;
+					}
+				} finally {
+					a();
+					b();
+					finalizer();
+				}
+			};
+		})();
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fn, ok := AssertFunction(v)
+	if !ok {
+		t.Fatal("expected a function")
+	}
+	_, err = fn(Undefined())
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestTryCompletionResult(t *testing.T) {
 	const SCRIPT = `
 	99; do { -99; try { 39 } catch (e) { -1 } finally { break; -2 }; } while (false);
