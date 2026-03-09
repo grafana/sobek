@@ -4915,6 +4915,14 @@ func (leaveTry) exec(vm *vm) {
 		vm.pc = int(tf.finallyPos)
 		tf.finallyPos = -1
 		tf.catchPos = -1
+		// Restore the stash to the state it was in when the try frame was
+		// pushed. Inner block scopes may have added stash levels that were
+		// not cleaned up (e.g. when a return statement inside a try body
+		// skips leaveBlock instructions). Without this, the finally block
+		// would see the wrong stash chain, causing loadStashLex to access
+		// incorrect stash slots. This mirrors what handleThrow does for the
+		// exception path (vm.go line 822).
+		vm.stash = tf.stash
 	} else {
 		vm.popTryFrame()
 		vm.pc++
