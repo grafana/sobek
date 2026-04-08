@@ -210,12 +210,9 @@ func loadAndRunEntry(config *sobek.ESMConfig, resolver *fsModuleResolver, absEnt
 
 func runEventLoop(vm *sobek.Runtime, mp *sobek.ModulePromise, eventLoop chan func()) {
 	for {
-		select {
-		case fn := <-eventLoop:
-			fn()
-		default:
-			_, _ = vm.RunString("")
-		}
+		// Drain the microtask queue. This resumes any suspended awaits and may
+		// enqueue new callbacks (e.g. the next dynamic import) into eventLoop.
+		_, _ = vm.RunString("")
 
 		switch mp.State() {
 		case sobek.PromiseStateRejected:
@@ -223,9 +220,10 @@ func runEventLoop(vm *sobek.Runtime, mp *sobek.ModulePromise, eventLoop chan fun
 			os.Exit(1)
 		case sobek.PromiseStateFulfilled:
 			os.Exit(0)
-		case sobek.PromiseStatePending:
-			fn := <-eventLoop
-			fn()
 		}
+
+		// Block until the next external event (e.g. a dynamic import resolution).
+		fn := <-eventLoop
+		fn()
 	}
 }
