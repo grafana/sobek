@@ -616,6 +616,8 @@ func (ctx *tc39TestCtx) runTC39Test(name, src string, meta *tc39Meta, t testing.
 
 	eventLoopQueue := make(chan func(), 10)
 	dynamicImport := meta.hasFeature("dynamic-import")
+	// TODO(deprecated): replace the block below with ESMConfig setup (see runTC39TestWithESMConfig)
+	// when the deprecated importModuleDynamically field is removed.
 	if dynamicImport {
 		vm.importModuleDynamically = func(referencingScriptOrModule interface{}, specifierValue Value, pcap interface{}) {
 			// fmt.Printf("import(%s, %s, %s)\n", referencingScriptOrModule, specifierValue, pcap)
@@ -640,6 +642,8 @@ func (ctx *tc39TestCtx) runTC39Test(name, src string, meta *tc39Meta, t testing.
 	var early bool
 	var asyncError <-chan error
 	if meta.hasFlag("module") {
+		// TODO(deprecated): replace with runTC39ModuleWithESMConfig and drop runTC39Module
+		// when the deprecated CyclicModuleRecordEvaluate and SetImportModuleDynamically are removed.
 		err, early, asyncError = ctx.runTC39Module(name, src, meta.Includes, vm, hostResolveImportedModule)
 	} else {
 		err, early = ctx.runTC39Script(name, src, meta.Includes, vm)
@@ -783,6 +787,11 @@ func (ctx *tc39TestCtx) runTC39File(name string, t testing.TB) {
 		ctx.runTC39Test(name, "'use strict';\n"+src, meta, t)
 	}
 
+	if meta.hasFlag("module") {
+		t.Logf("Running ESMConfig module test: %s", name)
+		ctx.runTC39TestWithESMConfig(name, src, meta, t)
+	}
+
 	if ctx.enableBench {
 		ctx.benchLock.Lock()
 		ctx.benchmark = append(ctx.benchmark, tc39BenchmarkItem{
@@ -842,6 +851,9 @@ func (ctx *tc39TestCtx) runFile(base, name string, vm *Runtime) error {
 	return err
 }
 
+// Deprecated: uses the old CyclicModuleRecordEvaluate API via m.Evaluate(vm).
+// Drop this function and its callsite in runTC39Test when that API is removed;
+// runTC39ModuleWithESMConfig is the replacement.
 func (ctx *tc39TestCtx) runTC39Module(name, src string, includes []string, vm *Runtime, hostResolveImportedModule HostResolveImportedModuleFunc) (err error, early bool, asyncError chan error) {
 	early = true
 	err = ctx.runFile(ctx.base, path.Join("harness", "assert.js"), vm)
@@ -894,6 +906,250 @@ func (ctx *tc39TestCtx) runTC39Module(name, src string, includes []string, vm *R
 		close(asyncError)
 	}
 	return
+}
+
+func (ctx *tc39TestCtx) runTC39ModuleWithESMConfig(name, src string, includes []string, vm *Runtime, config *ESMConfig) (err error, early bool, asyncError chan error) {
+	early = true
+	err = ctx.runFile(ctx.base, path.Join("harness", "assert.js"), vm)
+	if err != nil {
+		return
+	}
+
+	err = ctx.runFile(ctx.base, path.Join("harness", "sta.js"), vm)
+	if err != nil {
+		return
+	}
+
+	for _, include := range includes {
+		err = ctx.runFile(ctx.base, path.Join("harness", include), vm)
+		if err != nil {
+			return
+		}
+	}
+	m, err := config.hostResolveImportedModule(nil, path.Base(name))
+	if err != nil {
+		return
+	}
+	p := m.(*SourceTextModuleRecord)
+
+	err = p.Link()
+	if err != nil {
+		return
+	}
+
+	early = false
+	promise := config.EvaluateModule(p).Promise()
+
+	asyncError = make(chan error, 1)
+	if promise.state == PromiseStateRejected {
+		ex := vm.ExportTo(promise.Result(), &err)
+		if ex != nil {
+			panic(ex)
+		}
+	} else if promise.state == PromiseStatePending {
+		vm.performPromiseThen(promise, vm.ToValue(func(_ FunctionCall) Value {
+			close(asyncError)
+			return nil
+		}), vm.ToValue(func(call FunctionCall) Value {
+			asyncError <- vm.vm.exceptionFromValue(call.Argument(0))
+			close(asyncError)
+			return nil
+		}), nil)
+	} else {
+		// TODO ?!?!
+		close(asyncError)
+	}
+	return
+}
+
+func (ctx *tc39TestCtx) runTC39TestWithESMConfig(name, src string, meta *tc39Meta, t testing.TB) {
+	defer func() {
+		if x := recover(); x != nil {
+			panic(fmt.Sprintf("panic while running %s: %v", name, x))
+		}
+	}()
+	vm := New()
+	_262 := vm.NewObject()
+	_262.Set("detachArrayBuffer", ctx.detachArrayBuffer)
+	_262.Set("createRealm", ctx.throwIgnorableTestError)
+	_262.Set("evalScript", func(call FunctionCall) Value {
+		script := call.Argument(0).String()
+		result, err := vm.RunString(script)
+		if err != nil {
+			panic(err)
+		}
+		return result
+	})
+	vm.Set("$262", _262)
+	vm.Set("IgnorableTestError", ignorableTestError)
+	vm.RunProgram(ctx.sabStub)
+	var out []string
+	async := meta.hasFlag("async")
+
+	type cacheElement struct {
+		m   ModuleRecord
+		err error
+	}
+	cache := make(map[string]cacheElement)
+	mx := sync.Mutex{}
+
+	var hostResolveImportedModule func(referencingScriptOrModule interface{}, specifier string) (ModuleRecord, error)
+	hostResolveImportedModule = func(referencingScriptOrModule interface{}, specifier string) (ModuleRecord, error) {
+		mx.Lock()
+		defer mx.Unlock()
+		fname := path.Join(ctx.base, path.Dir(name), specifier)
+		k, ok := cache[fname]
+		if ok {
+			return k.m, k.err
+		}
+		f, err := os.Open(fname)
+		if err != nil {
+			cache[fname] = cacheElement{err: err}
+			return nil, err
+		}
+		defer f.Close()
+
+		b, err := io.ReadAll(f)
+		if err != nil {
+			cache[fname] = cacheElement{err: err}
+			return nil, err
+		}
+
+		str := string(b)
+		p, err := ParseModule(fname, str, hostResolveImportedModule)
+		if err != nil {
+			cache[fname] = cacheElement{err: err}
+			return nil, err
+		}
+		cache[fname] = cacheElement{m: p}
+		return p, nil
+	}
+
+	eventLoopQueue := make(chan func(), 10)
+	dynamicImport := meta.hasFeature("dynamic-import")
+	config := NewESMConfig().WithHostResolveImportedModule(hostResolveImportedModule)
+	if dynamicImport {
+		config = config.WithImportModuleDynamically(func(referencingScriptOrModule interface{}, specifierValue Value, pcap interface{}) {
+			specifier := specifierValue.String()
+			m, err := hostResolveImportedModule(referencingScriptOrModule, specifier)
+			vm.FinishLoadingImportModule(referencingScriptOrModule, specifierValue, pcap, m, err)
+		})
+	}
+	vm.AttachESM(config)
+
+	if async {
+		err := ctx.runFile(ctx.base, path.Join("harness", "doneprintHandle.js"), vm)
+		if err != nil {
+			t.Fatal(err)
+		}
+		vm.Set("print", func(msg string) {
+			out = append(out, msg)
+		})
+	} else {
+		vm.Set("print", t.Log)
+	}
+
+	var err error
+	var early bool
+	var asyncError <-chan error
+	if meta.hasFlag("module") {
+		err, early, asyncError = ctx.runTC39ModuleWithESMConfig(name, src, meta.Includes, vm, config)
+	} else {
+		err, early = ctx.runTC39Script(name, src, meta.Includes, vm)
+	}
+
+	if vm.vm.sp != 0 {
+		t.Fatalf("sp: %d", vm.vm.sp)
+	}
+
+	if l := len(vm.vm.iterStack); l > 0 {
+		t.Fatalf("iter stack is not empty: %d", l)
+	}
+	if async && err == nil {
+		for {
+			complete := false
+			for _, line := range out {
+				if strings.HasPrefix(line, "Test262:AsyncTestFailure:") {
+					t.Fatal(line)
+				} else if line == "Test262:AsyncTestComplete" {
+					complete = true
+				}
+			}
+			if complete {
+				break
+			}
+			for _, line := range out {
+				t.Log(line)
+			}
+			select {
+			case fn := <-eventLoopQueue:
+				fn()
+			case <-time.After(time.Millisecond * 5000):
+				t.Fatal("nothing happened in 5s :(")
+			}
+		}
+		if asyncError != nil {
+			select {
+			case err = <-asyncError:
+			case <-time.After(time.Millisecond * 5000):
+				t.Fatal("nothing happened in 5s :(")
+			}
+		}
+	}
+
+	if err != nil {
+		if meta.Negative.Type == "" {
+			if err, ok := err.(*Exception); ok {
+				if err.Value() == ignorableTestError {
+					t.Skip("Test threw IgnorableTestError")
+				}
+			}
+			exc := new(Exception)
+			if errors.As(err, &exc) {
+				t.Fatalf("%s: %v", name, exc.String())
+			} else {
+				t.Fatalf("%s: %v", name, err)
+			}
+		} else {
+			if (meta.Negative.Phase == "early" || meta.Negative.Phase == "parse") && !early || meta.Negative.Phase == "runtime" && early {
+				t.Fatalf("%s: error %v happened at the wrong phase (expected %s)", name, err, meta.Negative.Phase)
+			}
+			var errType string
+
+			switch err := err.(type) {
+			case *Exception:
+				if o, ok := err.Value().(*Object); ok {
+					if c := o.Get("constructor"); c != nil {
+						if c, ok := c.(*Object); ok {
+							errType = c.Get("name").String()
+						} else {
+							t.Fatalf("%s: error constructor is not an object (%v)", name, o)
+						}
+					} else {
+						t.Fatalf("%s: error does not have a constructor (%v)", name, o)
+					}
+				} else {
+					t.Fatalf("%s: error is not an object (%v)", name, err.Value())
+				}
+			case *CompilerSyntaxError:
+				errType = "SyntaxError"
+			case *CompilerReferenceError:
+				errType = "ReferenceError"
+			default:
+				t.Fatalf("%s: error is not a JS error: %v", name, err)
+			}
+
+			if errType != meta.Negative.Type {
+				vm.vm.prg.dumpCode(t.Logf)
+				t.Fatalf("%s: unexpected error type (%s), expected (%s)", name, errType, meta.Negative.Type)
+			}
+		}
+	} else {
+		if meta.Negative.Type != "" {
+			vm.vm.prg.dumpCode(t.Logf)
+			t.Fatalf("%s: Expected error: %v", name, err)
+		}
+	}
 }
 
 func (ctx *tc39TestCtx) runTC39Script(name, src string, includes []string, vm *Runtime) (err error, early bool) {

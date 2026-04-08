@@ -5081,7 +5081,7 @@ func (_loadDynamicImport) exec(vm *vm) {
 			}
 			return pcap.promise
 		}
-		if vm.r.importModuleDynamically == nil {
+		if vm.r.importModuleDynamicallyFn() == nil {
 			pcap.reject(asciiString("dynamic modules not enabled in the host program"))
 		} else {
 			pcapInput := vm.r.newPromiseCapability(vm.r.getPromise())
@@ -5099,7 +5099,7 @@ func (_loadDynamicImport) exec(vm *vm) {
 				return nil
 			})
 			vm.r.performPromiseThen(pcapInput.promise.Export().(*Promise), onFullfill, rejectionClosure, nil)
-			vm.r.importModuleDynamically(t, specifierStr, pcapInput)
+			vm.r.importModuleDynamicallyFn()(t, specifierStr, pcapInput)
 		}
 		return pcap.promise
 	}))

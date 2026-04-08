@@ -154,7 +154,8 @@ func newEvaluationState() *evaluationState {
 	}
 }
 
-// TODO have resolve as part of runtime
+// Deprecated: use ESMConfig.EvaluateModule via Runtime.AttachESM instead, which
+// eliminates the need to pass the resolver explicitly at evaluation time.
 func (r *Runtime) CyclicModuleRecordEvaluate(c CyclicModuleRecord, resolve HostResolveImportedModuleFunc) (promise *Promise) {
 	defer func() {
 		if x := recover(); x != nil {
@@ -428,16 +429,16 @@ func (r *Runtime) getImportMetaFor(m ModuleRecord) *Object {
 	_ = o.SetPrototype(nil)
 
 	var properties []MetaProperty
-	if r.getImportMetaProperties != nil {
-		properties = r.getImportMetaProperties(m)
+	if fn := r.getImportMetaPropertiesFn(); fn != nil {
+		properties = fn(m)
 	}
 
 	for _, property := range properties {
 		o.Set(property.Key, property.Value)
 	}
 
-	if r.finalizeImportMeta != nil {
-		r.finalizeImportMeta(o, m)
+	if fn := r.finalizeImportMetaFn(); fn != nil {
+		fn(o, m)
 	}
 
 	r.importMetas[m] = o
@@ -449,18 +450,30 @@ type MetaProperty struct {
 	Value Value
 }
 
+// Deprecated: use ESMConfig.WithGetImportMetaProperties via Runtime.AttachESM instead.
 func (r *Runtime) SetGetImportMetaProperties(fn func(ModuleRecord) []MetaProperty) {
+	if r.esm != nil {
+		panic("cannot use SetGetImportMetaProperties when ESMConfig is attached; use ESMConfig.WithGetImportMetaProperties")
+	}
 	r.getImportMetaProperties = fn
 }
 
+// Deprecated: use ESMConfig.WithFinalizeImportMeta via Runtime.AttachESM instead.
 func (r *Runtime) SetFinalImportMeta(fn func(*Object, ModuleRecord)) {
+	if r.esm != nil {
+		panic("cannot use SetFinalImportMeta when ESMConfig is attached; use ESMConfig.WithFinalizeImportMeta")
+	}
 	r.finalizeImportMeta = fn
 }
 
 // TODO fix signature
 type ImportModuleDynamicallyCallback func(referencingScriptOrModule interface{}, specifier Value, promiseCapability interface{})
 
+// Deprecated: use ESMConfig.WithImportModuleDynamically via Runtime.AttachESM instead.
 func (r *Runtime) SetImportModuleDynamically(callback ImportModuleDynamicallyCallback) {
+	if r.esm != nil {
+		panic("cannot use SetImportModuleDynamically when ESMConfig is attached; use ESMConfig.WithImportModuleDynamically")
+	}
 	r.importModuleDynamically = callback
 }
 

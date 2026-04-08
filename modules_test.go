@@ -1,3 +1,6 @@
+// Tests in this file exercise the deprecated module API
+// (SetImportModuleDynamically, SetGetImportMetaProperties, SetFinalImportMeta,
+// CyclicModuleRecordEvaluate). Drop this file when that API is removed.
 package sobek
 
 import (

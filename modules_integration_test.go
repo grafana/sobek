@@ -61,6 +61,8 @@ type unresolvedBinding struct {
 	bidning string
 }
 
+// Deprecated API test: uses CyclicModuleRecordEvaluate directly.
+// Drop when CyclicModuleRecordEvaluate is removed; TestNotSourceModulesBigTestESMConfig is the replacement.
 func TestNotSourceModulesBigTest(t *testing.T) {
 	t.Parallel()
 	resolver := newSimpleComboResolver()
@@ -137,6 +139,84 @@ func TestNotSourceModulesBigTest(t *testing.T) {
 	}
 }
 
+func TestNotSourceModulesBigTestESMConfig(t *testing.T) {
+	t.Parallel()
+	resolver := newSimpleComboResolver()
+	resolver.custom = func(_ interface{}, specifier string) (sobek.ModuleRecord, error) {
+		switch specifier {
+		case "custom:coolstuff":
+			return &simpleModuleImpl{}, nil
+		case "custom:coolstuff2":
+			return &cyclicModuleImpl{
+				resolve:          resolver.resolve,
+				requestedModules: []string{"custom:coolstuff3", "custom:coolstuff"},
+				exports: map[string]unresolvedBinding{
+					"coolStuff": {
+						bidning: "coolStuff",
+						module:  "custom:coolstuff",
+					},
+					"otherCoolStuff": {
+						bidning: "coolStuff",
+						module:  "custom:coolstuff3",
+					},
+				},
+			}, nil
+		case "custom:coolstuff3":
+			return &cyclicModuleImpl{
+				resolve:          resolver.resolve,
+				requestedModules: []string{"custom:coolstuff2"},
+				exports: map[string]unresolvedBinding{
+					"coolStuff": {
+						bidning: "coolStuff",
+						module:  "custom:coolstuff2",
+					},
+				},
+			}, nil
+		default:
+			return nil, fmt.Errorf("unknown module %q", specifier)
+		}
+	}
+	mapfs := make(fstest.MapFS)
+	mapfs["main.js"] = &fstest.MapFile{
+		Data: []byte(`
+        import {coolStuff} from "custom:coolstuff";
+        import {coolStuff as coolStuff3, otherCoolStuff} from "custom:coolstuff2";
+        if (coolStuff != 5) {
+            throw "coolStuff isn't a 5 it is a "+ coolStuff
+        }
+        if (coolStuff3 != 5) {
+            throw "coolStuff3 isn't a 5 it is a "+ coolStuff3
+        }
+        if (otherCoolStuff != 5) {
+            throw "otherCoolStuff isn't a 5 it is a "+ otherCoolStuff
+        }
+        globalThis.s = true
+        `),
+	}
+	resolver.fs = mapfs
+	m, err := resolver.resolve(nil, "main.js")
+	if err != nil {
+		t.Fatalf("got error %s", err)
+	}
+	p := m.(*sobek.SourceTextModuleRecord)
+	err = p.Link()
+	if err != nil {
+		t.Fatalf("got error %s", err)
+	}
+	vm := sobek.New()
+	config := sobek.NewESMConfig().WithHostResolveImportedModule(resolver.resolve)
+	vm.AttachESM(config)
+	mp := config.EvaluateModule(p)
+	if err := mp.Err(); err != nil {
+		t.Fatalf("got error %s", err)
+	}
+	if s := vm.GlobalObject().Get("s"); s == nil || !s.ToBoolean() {
+		t.Fatalf("test didn't run till the end")
+	}
+}
+
+// Deprecated API test: uses SetImportModuleDynamically and CyclicModuleRecordEvaluate.
+// Drop when those are removed; TestNotSourceModulesBigTestDynamicImportESMConfig is the replacement.
 func TestNotSourceModulesBigTestDynamicImport(t *testing.T) {
 	t.Parallel()
 	resolver := newSimpleComboResolver()
@@ -224,6 +304,112 @@ func TestNotSourceModulesBigTestDynamicImport(t *testing.T) {
 	// TODO fix
 	if promise.State() != sobek.PromiseStateFulfilled {
 		err := promise.Result().Export().(error)
+		t.Fatalf("got error %s", err)
+	}
+	const timeout = time.Millisecond * 1000
+	for {
+		if s := vm.GlobalObject().Get("s"); s != nil {
+			if !s.ToBoolean() {
+				t.Fatal("s has wrong value false")
+			}
+			return
+		}
+		select {
+		case fn := <-eventLoopQueue:
+			fn()
+		case <-time.After(timeout):
+			t.Fatalf("nothing happened in %s :(", timeout)
+		}
+	}
+}
+
+func TestNotSourceModulesBigTestDynamicImportESMConfig(t *testing.T) {
+	t.Parallel()
+	resolver := newSimpleComboResolver()
+	resolver.custom = func(_ interface{}, specifier string) (sobek.ModuleRecord, error) {
+		switch specifier {
+		case "custom:coolstuff":
+			return &simpleModuleImpl{}, nil
+		case "custom:coolstuff2":
+			return &cyclicModuleImpl{
+				resolve:          resolver.resolve,
+				requestedModules: []string{"custom:coolstuff3", "custom:coolstuff"},
+				exports: map[string]unresolvedBinding{
+					"coolStuff": {
+						bidning: "coolStuff",
+						module:  "custom:coolstuff",
+					},
+					"otherCoolStuff": {
+						bidning: "coolStuff",
+						module:  "custom:coolstuff3",
+					},
+				},
+			}, nil
+		case "custom:coolstuff3":
+			return &cyclicModuleImpl{
+				resolve:          resolver.resolve,
+				requestedModules: []string{"custom:coolstuff2"},
+				exports: map[string]unresolvedBinding{
+					"coolStuff": {
+						bidning: "coolStuff",
+						module:  "custom:coolstuff2",
+					},
+				},
+			}, nil
+		default:
+			return nil, fmt.Errorf("unknown module %q", specifier)
+		}
+	}
+	mapfs := make(fstest.MapFS)
+	mapfs["main.js"] = &fstest.MapFile{
+		Data: []byte(`
+        Promise.all([import("custom:coolstuff"), import("custom:coolstuff2")]).then((res)=> {
+            let coolStuff = res[0].coolStuff
+            let coolStuff3 = res[1].coolStuff
+            let otherCoolStuff = res[1].otherCoolStuff
+
+            if (coolStuff != 5) {
+                throw "coolStuff isn't a 5 it is a "+ coolStuff
+            }
+            if (coolStuff3 != 5) {
+                throw "coolStuff3 isn't a 5 it is a "+ coolStuff3
+            }
+            if (otherCoolStuff != 5) {
+                throw "otherCoolStuff isn't a 5 it is a "+ otherCoolStuff
+            }
+            globalThis.s = true;
+        })`),
+	}
+	resolver.fs = mapfs
+	m, err := resolver.resolve(nil, "main.js")
+	if err != nil {
+		t.Fatalf("got error %s", err)
+	}
+	p := m.(*sobek.SourceTextModuleRecord)
+	err = p.Link()
+	if err != nil {
+		t.Fatalf("got error %s", err)
+	}
+	vm := sobek.New()
+	eventLoopQueue := make(chan func(), 2)
+	vm.SetPromiseRejectionTracker(func(p *sobek.Promise, operation sobek.PromiseRejectionOperation) {
+		t.Fatal(p.Result())
+	})
+	config := sobek.NewESMConfig().
+		WithHostResolveImportedModule(resolver.resolve).
+		WithImportModuleDynamically(func(referencingScriptOrModule interface{}, specifierValue sobek.Value, promiseCapability interface{}) {
+			specifier := specifierValue.String()
+			go func() {
+				m, err := resolver.resolve(referencingScriptOrModule, specifier)
+				eventLoopQueue <- func() {
+					defer vm.RunString("")
+					vm.FinishLoadingImportModule(referencingScriptOrModule, specifierValue, promiseCapability, m, err)
+				}
+			}()
+		})
+	vm.AttachESM(config)
+	mp := config.EvaluateModule(p)
+	if err := mp.Err(); err != nil {
 		t.Fatalf("got error %s", err)
 	}
 	const timeout = time.Millisecond * 1000
@@ -364,6 +550,8 @@ func (si *cyclicModuleInstanceImpl) GetBindingValue(exportName string) sobek.Val
 	return si.rt.GetModuleInstance(b.Module).GetBindingValue(exportName)
 }
 
+// Deprecated API test: uses SetGetImportMetaProperties.
+// Drop when that is removed; TestSourceMetaImportESMConfig is the replacement.
 func TestSourceMetaImport(t *testing.T) {
 	t.Parallel()
 	resolver := newSimpleComboResolver()
@@ -410,6 +598,61 @@ func TestSourceMetaImport(t *testing.T) {
 			},
 		}
 	})
+	promise := m.Evaluate(vm)
+	if promise.State() != sobek.PromiseStateFulfilled {
+		err := promise.Result().Export().(error)
+		t.Fatalf("got error %s", err)
+	}
+}
+
+func TestSourceMetaImportESMConfig(t *testing.T) {
+	t.Parallel()
+	resolver := newSimpleComboResolver()
+	mapfs := make(fstest.MapFS)
+	mapfs["main.js"] = &fstest.MapFile{
+		Data: []byte(`
+        import { meta } from "b.js"
+
+        if (meta.url != "file:///b.js") {
+            throw "wrong url " + meta.url + " for b.js"
+        }
+
+        if (import.meta.url != "file:///main.js") {
+            throw "wrong url " + import.meta.url + " for main.js"
+        }
+        `),
+	}
+	mapfs["b.js"] = &fstest.MapFile{
+		Data: []byte(`
+        export var meta = import.meta
+        `),
+	}
+	resolver.fs = mapfs
+	m, err := resolver.resolve(nil, "main.js")
+	if err != nil {
+		t.Fatalf("got error %s", err)
+	}
+	p := m.(*sobek.SourceTextModuleRecord)
+
+	err = p.Link()
+	if err != nil {
+		t.Fatalf("got error %s", err)
+	}
+	vm := sobek.New()
+	config := sobek.NewESMConfig().
+		WithGetImportMetaProperties(func(m sobek.ModuleRecord) []sobek.MetaProperty {
+			specifier, ok := resolver.reverseCache[m]
+			if !ok {
+				panic("we got import.meta for module that wasn't imported")
+			}
+			return []sobek.MetaProperty{
+				{
+					Key:   "url",
+					Value: vm.ToValue("file:///"+specifier),
+				},
+			}
+		})
+	vm.AttachESM(config)
 	promise := m.Evaluate(vm)
 	if promise.State() != sobek.PromiseStateFulfilled {
 		err := promise.Result().Export().(error)

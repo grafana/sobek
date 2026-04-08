@@ -23,22 +23,68 @@ Features
  * Capable of running Babel, Typescript compiler and pretty much anything written in ES5.
  * Sourcemaps.
  * Most of ES6 functionality, still work in progress, see https://github.com/grafana/sobek/milestone/1?closed=1
- * Experimental ESM support.
+ * ECMAScript Module (ESM) support, including custom Go modules exposed to JavaScript.
 
 Known incompatibilities and caveats
 -----------------------------------
 
 ### ESM support
 
-ECMAScript Modules or ESM for short was implemented and merged in this fork to facilitate the needs of [k6](https://github.com/grafana/k6/) as such some compromises were taken in favor of time.
+ECMAScript Modules (ESM) are configured through `ESMConfig`, which is attached to a
+`Runtime` once and then used to evaluate module entry points:
 
-In general the API is very close to the specification, which unfortunately does *not* translate greatly to actual usage.
+```go
+var resolve sobek.HostResolveImportedModuleFunc
+resolve = func(_ interface{}, specifier string) (sobek.ModuleRecord, error) {
+    src, err := os.ReadFile(specifier)
+    if err != nil {
+        return nil, err
+    }
+    return sobek.ParseModule(specifier, string(src), resolve)
+}
 
-For this reason it is very likely that it will be updated in breaking manner in the future and there is currently no concrete documentation around it.
+vm := sobek.New()
+config := sobek.NewESMConfig().
+    WithHostResolveImportedModule(resolve).
+    WithImportModuleDynamically(func(referrer interface{}, specifier sobek.Value, pcap interface{}) {
+        m, err := resolve(referrer, specifier.String())
+        vm.FinishLoadingImportModule(referrer, specifier, pcap, m, err)
+    })
+vm.AttachESM(config)
 
-For any usage info or bare documentation it is recommended to look at the tests in [modules_test.go](https://github.com/grafana/sobek/blob/main/modules_test.go) and [modules_integration_test.go](https://github.com/grafana/sobek/blob/main/modules_integration_test.go).
+entry, _ := resolve(nil, "main.js")
+entry.Link()
+mp := config.EvaluateModule(entry.(*sobek.SourceTextModuleRecord))
+if err := mp.Err(); err != nil {
+    log.Fatal(err)
+}
+```
 
-Also of note is that due to the nature of ESM you need to have an event loop implementation to use it. That is still not provided by Sobek and likely never will be.
+The resolver function passed to `WithHostResolveImportedModule` is the single dispatch
+point for all imports. Return a `SourceTextModuleRecord` (from `ParseModule`) for JS source
+files, or any type implementing `ModuleRecord` to expose Go functionality directly to
+JavaScript. This makes it straightforward to mix filesystem modules with native Go modules
+in the same import graph:
+
+```go
+resolve = func(_ interface{}, specifier string) (sobek.ModuleRecord, error) {
+    if specifier == "custom:math" {
+        return &myGoMathModule{}, nil  // implements sobek.ModuleRecord
+    }
+    src, _ := os.ReadFile(specifier)
+    return sobek.ParseModule(specifier, string(src), resolve)
+}
+```
+
+See [esm_custom_module_test.go](esm_custom_module_test.go) for a complete working example
+combining filesystem source files and a custom Go module, and the `ESMConfig` godoc for the
+full API including `import.meta` customization.
+
+**Event loop:** dynamic imports and top-level `await` require an event loop, which Sobek
+does not provide. The `WithImportModuleDynamically` callback is where you integrate your
+own event loop: resolve the module and call `vm.FinishLoadingImportModule` from within the
+loop's next tick. See [cmd/sobek/main.go](cmd/sobek/main.go) for a minimal event loop
+implementation.
 
 ### WeakMap
 WeakMap is implemented by embedding references to the values into the keys. This means that as long

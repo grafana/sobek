@@ -197,6 +197,8 @@ type Runtime struct {
 	hash  *maphash.Hash
 	idSeq uint64
 
+	esm *ESMConfig
+
 	modules          map[ModuleRecord]ModuleInstance
 	moduleNamespaces map[ModuleRecord]*namespaceObject
 	importMetas      map[ModuleRecord]*Object
@@ -2452,6 +2454,55 @@ func (r *Runtime) SetTimeSource(now Now) {
 // SetParserOptions sets parser options to be used by RunString, RunScript and eval() within the code.
 func (r *Runtime) SetParserOptions(opts ...parser.Option) {
 	r.parserOptions = opts
+}
+
+// ESM returns the ESMConfig attached to this runtime, or nil if none is attached.
+func (r *Runtime) ESM() *ESMConfig {
+	return r.esm
+}
+
+// AttachESM attaches the given ESMConfig to this runtime. A config can only be
+// attached to one runtime; attaching to a second panics. Attaching a different
+// config to a runtime that already has one also panics.
+func (r *Runtime) AttachESM(config *ESMConfig) {
+	if config == nil {
+		panic("ESMConfig cannot be nil")
+	}
+	if config.runtime != nil && config.runtime != r {
+		panic("ESMConfig is already attached to another runtime")
+	}
+	if r.esm != nil && r.esm != config {
+		panic("Runtime already has a different ESMConfig attached")
+	}
+	r.esm = config
+	config.runtime = r
+}
+
+// getImportMetaPropertiesFn returns the effective getImportMetaProperties function:
+// from ESMConfig if attached, otherwise from the runtime's direct field.
+func (r *Runtime) getImportMetaPropertiesFn() func(ModuleRecord) []MetaProperty {
+	if r.esm != nil && r.esm.getImportMetaProperties != nil {
+		return r.esm.getImportMetaProperties
+	}
+	return r.getImportMetaProperties
+}
+
+// finalizeImportMetaFn returns the effective finalizeImportMeta function:
+// from ESMConfig if attached, otherwise from the runtime's direct field.
+func (r *Runtime) finalizeImportMetaFn() func(*Object, ModuleRecord) {
+	if r.esm != nil && r.esm.finalizeImportMeta != nil {
+		return r.esm.finalizeImportMeta
+	}
+	return r.finalizeImportMeta
+}
+
+// importModuleDynamicallyFn returns the effective dynamic import callback:
+// from ESMConfig if attached, otherwise from the runtime's direct field.
+func (r *Runtime) importModuleDynamicallyFn() ImportModuleDynamicallyCallback {
+	if r.esm != nil && r.esm.importModuleDynamically != nil {
+		return r.esm.importModuleDynamically
+	}
+	return r.importModuleDynamically
 }
 
 // SetMaxCallStackSize sets the maximum function call depth. When exceeded, a *StackOverflowError is thrown and
