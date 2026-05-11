@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"github.com/dlclark/regexp2"
+	"github.com/dlclark/regexp2/v2"
 
 	"github.com/grafana/sobek/unistring"
 )
