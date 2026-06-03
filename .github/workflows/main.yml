@@ -4,7 +4,7 @@ jobs:
   test:
     strategy:
       matrix:
-        go-version: [1.22.x, 1.x]
+        go-version: [1.25.x, 1.x]
         os: [ubuntu-latest]
         arch: ["", "386"]
       fail-fast: false
@@ -16,6 +16,7 @@ jobs:
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version: ${{ matrix.go-version }}
+          check-latest: true
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
@@ -28,7 +29,7 @@ jobs:
       - name: Run staticcheck
         uses: dominikh/staticcheck-action@9716614d4101e79b4340dd97b10e54d68234e431 # v1.4.1
         with:
-          version: "2025.1"
+          version: "2026.1"
           install-go: false
           cache-key: ${{ matrix.go-version }}
         if: ${{ matrix.go-version == '1.x' }}
