@@ -1,10 +1,11 @@
 package sobek
 
 import (
+	"testing"
+
 	"github.com/grafana/sobek/file"
 	"github.com/grafana/sobek/parser"
 	"github.com/grafana/sobek/unistring"
-	"testing"
 )
 
 func TestTaggedTemplateArgExport(t *testing.T) {
