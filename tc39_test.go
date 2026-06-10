@@ -11,7 +11,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/goccy/go-yaml"
 )
 
@@ -212,9 +214,6 @@ var (
 		"test/built-ins/TypedArray/prototype/with/value-throw-completion.js":                                               true,
 		"test/built-ins/TypedArray/prototype/slice/speciesctor-return-same-buffer-with-offset.js":                          true,
 
-		// String prototype regexp-capture-by-index (regexp named groups)
-		"test/built-ins/String/prototype/replace/regexp-capture-by-index.js": true,
-
 		// RegExp CharacterClassEscapes
 		"test/built-ins/RegExp/CharacterClassEscapes/character-class-word-class-escape-positive-cases.js":           true,
 		"test/built-ins/RegExp/CharacterClassEscapes/character-class-word-class-escape-negative-cases.js":           true,
@@ -281,30 +280,6 @@ var (
 		"test/language/expressions/less-than/S11.8.1_A4.12_T1.js":                                                                           true,
 		"test/language/expressions/greater-than-or-equal/S11.8.4_A4.12_T1.js":                                                               true,
 		"test/language/expressions/greater-than/S11.8.2_A4.12_T1.js":                                                                        true,
-		"test/language/identifiers/part-unicode-17.0.0.js":                                                                                  true,
-		"test/language/identifiers/part-unicode-17.0.0-escaped.js":                                                                          true,
-		"test/language/identifiers/part-unicode-17.0.0-class.js":                                                                            true,
-		"test/language/identifiers/part-unicode-17.0.0-class-escaped.js":                                                                    true,
-		"test/language/identifiers/part-unicode-16.0.0.js":                                                                                  true,
-		"test/language/identifiers/part-unicode-16.0.0-escaped.js":                                                                          true,
-		"test/language/identifiers/part-unicode-16.0.0-class.js":                                                                            true,
-		"test/language/identifiers/part-unicode-16.0.0-class-escaped.js":                                                                    true,
-		"test/language/identifiers/part-unicode-15.1.0.js":                                                                                  true,
-		"test/language/identifiers/part-unicode-15.1.0-escaped.js":                                                                          true,
-		"test/language/identifiers/part-unicode-15.1.0-class.js":                                                                            true,
-		"test/language/identifiers/part-unicode-15.1.0-class-escaped.js":                                                                    true,
-		"test/language/identifiers/start-unicode-17.0.0.js":                                                                                 true,
-		"test/language/identifiers/start-unicode-17.0.0-escaped.js":                                                                         true,
-		"test/language/identifiers/start-unicode-17.0.0-class.js":                                                                           true,
-		"test/language/identifiers/start-unicode-17.0.0-class-escaped.js":                                                                   true,
-		"test/language/identifiers/start-unicode-16.0.0.js":                                                                                 true,
-		"test/language/identifiers/start-unicode-16.0.0-class.js":                                                                           true,
-		"test/language/identifiers/start-unicode-15.1.0.js":                                                                                 true,
-		"test/language/identifiers/start-unicode-15.1.0-escaped.js":                                                                         true,
-		"test/language/identifiers/start-unicode-15.1.0-class.js":                                                                           true,
-		"test/language/identifiers/start-unicode-15.1.0-class-escaped.js":                                                                   true,
-		"test/language/identifiers/start-unicode-16.0.0-class-escaped.js":                                                                   true,
-		"test/language/identifiers/start-unicode-16.0.0-escaped.js":                                                                         true,
 
 		// Extended Unicode group names in non-unicode regexp
 		"test/built-ins/RegExp/named-groups/non-unicode-property-names-valid.js": true,
@@ -375,6 +350,27 @@ func init() {
 	skip := func(prefixes ...string) {
 		for _, prefix := range prefixes {
 			skipPrefixes.Add(prefix)
+		}
+	}
+
+	unicodeVersion := semver.MustParse(unicode.Version)
+
+	if unicodeVersion.LessThan(semver.New(17, 0, 0, "", "")) {
+		skip(
+			"test/language/identifiers/start-unicode-17.",
+			"test/language/identifiers/part-unicode-17.",
+		)
+		if unicodeVersion.LessThan(semver.New(16, 0, 0, "", "")) {
+			skip(
+				"test/language/identifiers/start-unicode-16.",
+				"test/language/identifiers/part-unicode-16.",
+			)
+			if unicodeVersion.LessThan(semver.New(15, 1, 0, "", "")) {
+				skip(
+					"test/language/identifiers/start-unicode-15.1.",
+					"test/language/identifiers/part-unicode-15.1.",
+				)
+			}
 		}
 	}
 
