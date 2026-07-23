@@ -536,7 +536,12 @@ func ftoa(d float64, mode int, biasUp bool, ndigits int, buf []byte) ([]byte, in
 					b.Lsh(b, 1)
 					j1 = b.Cmp(S)
 					if (j1 > 0) || (j1 == 0 && (((dig & 1) == 1) || biasUp)) {
-						dig++
+						// dtoa.c guards round_9_up with `dig++ == '9'`: it tests the
+						// pre-increment digit, then increments as a side effect. Carry only
+						// when the digit WAS already '9'; otherwise append the incremented
+						// digit on fall-through. The prior port tested the post-increment
+						// value, wrongly carrying a correct 8->9 round-up and dropping a
+						// digit (+1 ulp). Matches the two sibling dig=='9' sites here.
 						if dig == '9' {
 							buf = append(buf, '9')
 							buf, flag := roundOff(buf, startPos)
@@ -546,6 +551,7 @@ func ftoa(d float64, mode int, biasUp bool, ndigits int, buf []byte) ([]byte, in
 							}
 							return buf, k + 1
 						}
+						dig++
 					}
 				}
 				buf = append(buf, dig)
