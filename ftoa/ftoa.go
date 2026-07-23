@@ -536,7 +536,15 @@ func ftoa(d float64, mode int, biasUp bool, ndigits int, buf []byte) ([]byte, in
 					b.Lsh(b, 1)
 					j1 = b.Cmp(S)
 					if (j1 > 0) || (j1 == 0 && (((dig & 1) == 1) || biasUp)) {
-						dig++
+						// Carry propagation (the round_9_up path in the original
+						// dtoa.c) applies only when the digit was ALREADY '9'
+						// before rounding up: `dig++ == '9'` in C compares the
+						// pre-increment value. Checking the post-increment value
+						// here made every round-up that lands ON '9' (dig was
+						// '8') round a second time via roundOff, emitting a
+						// one-digit-short string outside the half-ulp interval
+						// (e.g. 0.7016570306969449 -> "0.701657030696945",
+						// which does not parse back to the same float64).
 						if dig == '9' {
 							buf = append(buf, '9')
 							buf, flag := roundOff(buf, startPos)
@@ -546,6 +554,7 @@ func ftoa(d float64, mode int, biasUp bool, ndigits int, buf []byte) ([]byte, in
 							}
 							return buf, k + 1
 						}
+						dig++
 					}
 				}
 				buf = append(buf, dig)

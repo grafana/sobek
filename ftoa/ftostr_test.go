@@ -2,6 +2,7 @@ package ftoa
 
 import (
 	"math"
+	"math/rand"
 	"strconv"
 	"testing"
 )
@@ -88,5 +89,40 @@ func BenchmarkAppendFloatSmall(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		strconv.AppendFloat(buf[:0], math.Pi, 'e', -1, 64)
+	}
+}
+
+// TestDtostrShortestRoundTrip pins the mode-0 (shortest) contract required by
+// ECMAScript Number::toString: the produced string must parse back to exactly
+// the input float64. Before the fix, the closest-digit choice in the bignum
+// fallback propagated a carry whenever rounding up landed ON '9' (a mis-port
+// of dtoa.c's `dig++ == '9'` post-increment test), producing a one-digit-short
+// string outside the half-ulp interval for ~1 in 15,000 doubles.
+func TestDtostrShortestRoundTrip(t *testing.T) {
+	// Known pre-fix corruptions (all end in a round-up-to-9 final digit).
+	for _, d := range []float64{
+		0.7016570306969449, // rendered "0.701657030696945" before the fix
+		0.24414061428229689,
+		0.5084920399817559,
+		0.19243255639630719,
+		0.5342431914336429,
+		0.9868917361939819,
+	} {
+		got := string(FToStr(d, ModeStandard, 0, nil))
+		want := strconv.FormatFloat(d, 'g', -1, 64)
+		if back, _ := strconv.ParseFloat(got, 64); back != d {
+			t.Errorf("FToStr(%v, ModeStandard) = %q, does not round-trip (Go shortest: %q)", d, got, want)
+		}
+	}
+
+	// Differential check against the Go standard library's shortest formatter
+	// (a round-trip oracle) over a deterministic pseudo-random sample.
+	rng := rand.New(rand.NewSource(1))
+	for i := 0; i < 500000; i++ {
+		d := rng.Float64()
+		got := string(FToStr(d, ModeStandard, 0, nil))
+		if back, err := strconv.ParseFloat(got, 64); err != nil || back != d {
+			t.Fatalf("FToStr(%v, ModeStandard) = %q does not round-trip (err=%v)", d, got, err)
+		}
 	}
 }
