@@ -14,6 +14,44 @@ func TestRegexp1(t *testing.T) {
 	testScript(SCRIPT, valueTrue, t)
 }
 
+func TestRegexpInvalidUnicodeControlEscapes(t *testing.T) {
+	const SCRIPT = `
+	["u", "iu"].forEach(function (flags) {
+		["", "0", "9", "_", "%", "й"].forEach(function (c) {
+			["\\c" + c, "[\\c" + c + "]"].forEach(function (pattern) {
+				try {
+					new RegExp(pattern, flags);
+				} catch (e) {
+					if (e instanceof SyntaxError) return;
+					throw e;
+				}
+				throw new Error("Expected SyntaxError: " + pattern);
+			});
+		});
+	});
+	/\cA/u.test("\x01") && /[\cz]/iu.test("\x1a");
+	`
+	testScript(SCRIPT, valueTrue, t)
+}
+
+func TestRegexpUnicodePropertyEscapes(t *testing.T) {
+	const SCRIPT = `
+	["\\p{NotAProperty}", "\\p{", "\\p{L", "\\p{}", "[\\P{NotAProperty}]"].forEach(function (pattern) {
+		try {
+			new RegExp(pattern, "u");
+		} catch (e) {
+			if (e instanceof SyntaxError) return;
+			throw e;
+		}
+		throw new Error("Expected SyntaxError: " + pattern);
+	});
+	/^\p{L}$/u.test("a") && /^\p{L}$/u.test("\u{1d49c}") && !/^\p{L}$/u.test("1") && /^\P{L}$/u.test("1") &&
+	/^[\p{L}\p{N}]+$/u.test("café9") && /^\p{Lowercase_Letter}$/u.test("a") &&
+	/^\p{L}$/.test("p{L}") && /^\P$/.test("P");
+	`
+	testScript(SCRIPT, valueTrue, t)
+}
+
 func TestRegexp2(t *testing.T) {
 	const SCRIPT = `
 	var r = new RegExp("(['\"])(.*?)['\"]");

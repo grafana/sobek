@@ -2696,7 +2696,9 @@ func (e *compiledLogicalAnd) emitGetter(putOnStack bool) {
 	if e.left.constant() {
 		if v, ex := e.c.evalConst(e.left); ex == nil {
 			if !v.ToBoolean() {
-				e.c.emitLiteralValue(v)
+				if putOnStack {
+					e.c.emitLiteralValue(v)
+				}
 			} else {
 				e.c.emitExpr(e.right, putOnStack)
 			}
