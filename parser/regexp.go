@@ -399,6 +399,10 @@ func (self *_RegExp_parser) scanEscape(inClass bool) {
 		} else if 'A' <= self.chr && self.chr <= 'Z' {
 			value = int64(self.chr - 'A' + 1)
 		} else {
+			if self.unicode {
+				self.error(true, "Invalid control escape")
+				return
+			}
 			self.writeByte('c')
 			return
 		}
@@ -432,6 +436,14 @@ func (self *_RegExp_parser) scanEscape(inClass bool) {
 	case 'k':
 		// The rules are too complicated to implement here, so we pass it on to regexp2
 		self.error(false, "named group back-reference")
+		return
+	case 'p', 'P':
+		if self.unicode {
+			// re2 does not know most of the ECMAScript property names, so we pass it on to regexp2
+			self.error(false, "Unicode property escape")
+			return
+		}
+		self.pass()
 		return
 	default:
 		// $ is an identifier character, so we have to have
