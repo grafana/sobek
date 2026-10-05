@@ -354,7 +354,7 @@ func (self *_parser) scan() (tkn token.Token, literal string, parsedLiteral unis
 					insertSemicolon = true
 				}
 			case '-':
-				if self.chr == '-' && self._peek() == '>' && (start == 0 || strings.ContainsAny(self.str[start:self.chrOffset], "\r\n\u2028\u2029")) {
+				if !self.opts.module && self.chr == '-' && self._peek() == '>' && (start == 0 || strings.ContainsAny(self.str[start:self.chrOffset], "\r\n\u2028\u2029")) {
 					self.skipSingleLineComment()
 					continue
 				}
@@ -389,7 +389,7 @@ func (self *_parser) scan() (tkn token.Token, literal string, parsedLiteral unis
 			case '^':
 				tkn = self.switch2(token.EXCLUSIVE_OR, token.EXCLUSIVE_OR_ASSIGN)
 			case '<':
-				if strings.HasPrefix(self.str[self.chrOffset:], "!--") {
+				if !self.opts.module && strings.HasPrefix(self.str[self.chrOffset:], "!--") {
 					self.skipSingleLineComment()
 					continue
 				}
