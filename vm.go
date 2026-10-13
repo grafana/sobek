@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -5553,7 +5554,7 @@ func (n concatStrings) exec(vm *vm) {
 	vm.sp -= int(n) - 1
 	if allAscii {
 		var buf strings.Builder
-		buf.Grow(length)
+		buf.Grow(toStringLen(length))
 		for _, s := range strs {
 			buf.WriteString(string(s.(asciiString)))
 		}
@@ -5975,6 +5976,10 @@ type definePrivateProp struct {
 func (d *definePrivateProp) exec(vm *vm) {
 	f := vm.r.toObject(vm.stack[vm.sb-1]).self.(*classFuncObject)
 	obj := vm.r.toObject(vm.stack[vm.sp-2])
+	if !obj.self.isExtensible() {
+		vm.throw(vm.r.NewTypeError("Cannot add private field to non-extensible object"))
+		return
+	}
 	penv := obj.self.getPrivateEnv(f.privateEnvType, false)
 	penv.fields[d.idx] = vm.stack[vm.sp-1]
 	vm.sp--
@@ -6117,6 +6122,15 @@ func (vm *vm) exceptionFromValue(x interface{}) *Exception {
 	case syntaxError:
 		ex = &Exception{
 			val: vm.r.newError(vm.r.getSyntaxError(), string(x1)),
+		}
+	case runtime.Error:
+		msg := x1.Error()
+		if strings.Contains(msg, "makeslice: ") {
+			ex = &Exception{
+				val: vm.r.newError(vm.r.getRangeError(), "Invalid array or string length"),
+			}
+		} else {
+			return nil
 		}
 	default:
 		/*

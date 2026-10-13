@@ -474,6 +474,10 @@ func (self *_parser) parseObjectProperty() ast.Property {
 				self.errorUnexpectedToken(self.token)
 			}
 		case (literal == "get" || literal == "set" || tkn == token.ASYNC) && self.token != token.COLON:
+			if tkn == token.ASYNC && self.token == token.MULTIPLY {
+				generator = true
+				self.next()
+			}
 			_, _, keyValue, tkn1 := self.parseObjectPropertyKey()
 			if keyValue == nil {
 				return nil
@@ -493,7 +497,7 @@ func (self *_parser) parseObjectProperty() ast.Property {
 			return &ast.PropertyKeyed{
 				Key:      keyValue,
 				Kind:     kind,
-				Value:    self.parseMethodDefinition(keyStartIdx, kind, false, async),
+				Value:    self.parseMethodDefinition(keyStartIdx, kind, generator, async),
 				Computed: tkn1 == token.ILLEGAL,
 			}
 		}
@@ -721,6 +725,8 @@ func (self *_parser) parseBracketMember(left ast.Expression) ast.Expression {
 }
 
 func (self *_parser) parseNewExpression() ast.Expression {
+	self.enterNesting()
+	defer self.leaveNesting()
 	idx := self.expect(token.NEW)
 	if self.token == token.PERIOD {
 		self.next()
@@ -919,6 +925,9 @@ func (self *_parser) parseUpdateExpression() ast.Expression {
 }
 
 func (self *_parser) parseUnaryExpression() ast.Expression {
+	self.enterNesting()
+	defer self.leaveNesting()
+
 	switch self.token {
 	case token.PLUS, token.MINUS, token.NOT, token.BITWISE_NOT:
 		fallthrough
@@ -972,6 +981,8 @@ func (self *_parser) parseExponentiationExpression() ast.Expression {
 	left := self.parseUnaryExpression()
 
 	if self.token == token.EXPONENT {
+		self.enterNesting()
+		defer self.leaveNesting()
 		if !parenthesis {
 			if u, isUnary := left.(*ast.UnaryExpression); isUnary && u.Operator != token.INCREMENT && u.Operator != token.DECREMENT {
 				self.error(self.idx, "Unary operator used immediately before exponentiation expression. Parenthesis must be used to disambiguate operator precedence")
@@ -1311,6 +1322,8 @@ func (self *_parser) parseSingleArgArrowFunction(start file.Idx, async bool) ast
 }
 
 func (self *_parser) parseAssignmentExpression() ast.Expression {
+	self.enterNesting()
+	defer self.leaveNesting()
 	start := self.idx
 	parenthesis := false
 	async := false

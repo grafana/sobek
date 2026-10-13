@@ -254,29 +254,29 @@ func (r *Runtime) stringproto_concat(call FunctionCall) Value {
 
 	if allAscii {
 		var buf strings.Builder
-		buf.Grow(totalLen)
+		buf.Grow(toStringLen(totalLen))
 		for _, s := range strs {
 			buf.WriteString(s.String())
 		}
 		return asciiString(buf.String())
-	} else {
-		buf := make([]uint16, totalLen+1)
-		buf[0] = unistring.BOM
-		pos := 1
-		for _, s := range strs {
-			switch s := s.(type) {
-			case asciiString:
-				for i := 0; i < len(s); i++ {
-					buf[pos] = uint16(s[i])
-					pos++
-				}
-			case unicodeString:
-				copy(buf[pos:], s[1:])
-				pos += s.Length()
-			}
-		}
-		return unicodeString(buf)
 	}
+
+	buf := make([]uint16, totalLen+1)
+	buf[0] = unistring.BOM
+	pos := 1
+	for _, s := range strs {
+		switch s := s.(type) {
+		case asciiString:
+			for i := 0; i < len(s); i++ {
+				buf[pos] = uint16(s[i])
+				pos++
+			}
+		case unicodeString:
+			copy(buf[pos:], s[1:])
+			pos += s.Length()
+		}
+	}
+	return unicodeString(buf)
 }
 
 func (r *Runtime) stringproto_endsWith(call FunctionCall) Value {
@@ -567,7 +567,7 @@ func (r *Runtime) stringproto_repeat(call FunctionCall) Value {
 	a, u := devirtualizeString(s)
 	if u == nil {
 		var sb strings.Builder
-		sb.Grow(len(a) * num)
+		sb.Grow(safeMul(len(a), num))
 		for i := 0; i < num; i++ {
 			sb.WriteString(string(a))
 		}
@@ -575,7 +575,7 @@ func (r *Runtime) stringproto_repeat(call FunctionCall) Value {
 	}
 
 	var sb unicodeStringBuilder
-	sb.Grow(u.Length() * num)
+	sb.Grow(safeMul(u.Length(), num))
 	for i := 0; i < num; i++ {
 		sb.writeUnicodeString(u)
 	}
@@ -999,6 +999,43 @@ func (r *Runtime) stringproto_toUpperCase(call FunctionCall) Value {
 	return s.toUpper()
 }
 
+func (r *Runtime) stringproto_isWellFormed(call FunctionCall) Value {
+	r.checkObjectCoercible(call.This)
+	_, u := devirtualizeString(call.This.toString())
+	if u == nil || u.loneSurrogateIndex() == -1 {
+		return valueTrue
+	}
+	return valueFalse
+}
+
+func (r *Runtime) stringproto_toWellFormed(call FunctionCall) Value {
+	r.checkObjectCoercible(call.This)
+	s := call.This.toString()
+	_, u := devirtualizeString(s)
+	if u == nil {
+		return s
+	}
+	idx := u.loneSurrogateIndex()
+	if idx == -1 {
+		return s
+	}
+	b := make(unicodeString, len(u))
+	copy(b, u)
+	for i := idx + 1; i < len(b); i++ {
+		c := b[i]
+		if isUTF16FirstSurrogate(c) {
+			if i+1 < len(b) && isUTF16SecondSurrogate(b[i+1]) {
+				i++
+				continue
+			}
+			b[i] = utf8.RuneError
+		} else if isUTF16SecondSurrogate(c) {
+			b[i] = utf8.RuneError
+		}
+	}
+	return b
+}
+
 func (r *Runtime) stringproto_trim(call FunctionCall) Value {
 	r.checkObjectCoercible(call.This)
 	s := call.This.toString()
@@ -1097,6 +1134,7 @@ func createStringProtoTemplate() *objectTemplate {
 	t.putStr("endsWith", func(r *Runtime) Value { return r.methodProp(r.stringproto_endsWith, "endsWith", 1) })
 	t.putStr("includes", func(r *Runtime) Value { return r.methodProp(r.stringproto_includes, "includes", 1) })
 	t.putStr("indexOf", func(r *Runtime) Value { return r.methodProp(r.stringproto_indexOf, "indexOf", 1) })
+	t.putStr("isWellFormed", func(r *Runtime) Value { return r.methodProp(r.stringproto_isWellFormed, "isWellFormed", 0) })
 	t.putStr("lastIndexOf", func(r *Runtime) Value { return r.methodProp(r.stringproto_lastIndexOf, "lastIndexOf", 1) })
 	t.putStr("localeCompare", func(r *Runtime) Value { return r.methodProp(r.stringproto_localeCompare, "localeCompare", 1) })
 	t.putStr("match", func(r *Runtime) Value { return r.methodProp(r.stringproto_match, "match", 1) })
@@ -1117,6 +1155,7 @@ func createStringProtoTemplate() *objectTemplate {
 	t.putStr("toLowerCase", func(r *Runtime) Value { return r.methodProp(r.stringproto_toLowerCase, "toLowerCase", 0) })
 	t.putStr("toString", func(r *Runtime) Value { return r.methodProp(r.stringproto_toString, "toString", 0) })
 	t.putStr("toUpperCase", func(r *Runtime) Value { return r.methodProp(r.stringproto_toUpperCase, "toUpperCase", 0) })
+	t.putStr("toWellFormed", func(r *Runtime) Value { return r.methodProp(r.stringproto_toWellFormed, "toWellFormed", 0) })
 	t.putStr("trim", func(r *Runtime) Value { return r.methodProp(r.stringproto_trim, "trim", 0) })
 	t.putStr("trimEnd", func(r *Runtime) Value { return valueProp(r.getStringproto_trimEnd(), true, false, true) })
 	t.putStr("trimStart", func(r *Runtime) Value { return valueProp(r.getStringproto_trimStart(), true, false, true) })

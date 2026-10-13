@@ -439,7 +439,7 @@ func TestAmbiguousImport(t *testing.T) {
 	})
 	promise := fn(New())
 	if promise.state != PromiseStateRejected {
-		t.Fatalf("expected promise to be rejected %q", promise.state)
+		t.Fatalf("expected promise to be rejected %v", promise.state)
 	}
 	exc := promise.Result().Export().(*Exception)
 	expValue := `SyntaxError: The requested module "a.js" contains conflicting star exports for name "x"
@@ -465,7 +465,7 @@ func TestImportingUnexported(t *testing.T) {
 	})
 	promise := fn(New())
 	if promise.state != PromiseStateRejected {
-		t.Fatalf("expected promise to be rejected %q", promise.state)
+		t.Fatalf("expected promise to be rejected %v", promise.state)
 	}
 	exc := promise.Result().Export().(*Exception)
 	expValue := `SyntaxError: The requested module "a.js" does not provide an export named "x"
@@ -502,7 +502,7 @@ func TestModuleAsyncErrorAndPromiseRejection(t *testing.T) {
 	promise := fn(rt)
 	rt.performPromiseThen(promise, rt.ToValue(func() {}), rt.ToValue(func() {}), nil)
 	if promise.state != PromiseStateRejected {
-		t.Fatalf("expected promise to be rejected %q", promise.state)
+		t.Fatalf("expected promise to be rejected %v", promise.state)
 	}
 	exc := promise.Result().Export().(*Exception)
 	expValue := "ReferenceError: something is not defined\n\tat a.js:3:4(6)\n"
@@ -552,7 +552,7 @@ func TestModuleAsyncInterrupt(t *testing.T) {
 	promise := fn(rt)
 	rt.performPromiseThen(promise, rt.ToValue(func() {}), rt.ToValue(func() {}), nil)
 	if promise.state != PromiseStateRejected {
-		t.Fatalf("expected promise to be rejected %q", promise.state)
+		t.Fatalf("expected promise to be rejected %v", promise.state)
 	}
 	exc := promise.Result().Export().(*InterruptedError)
 	expValue := "the error we want\n\tat s (dep.js:4:14(3))\n\tat a.js:3:5(10)\n"

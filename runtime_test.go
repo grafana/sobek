@@ -173,6 +173,14 @@ func TestBinOctalNumbers(t *testing.T) {
 	testScript(SCRIPT, valueInt(7), t)
 }
 
+func TestNonOctalDecimalNumbers(t *testing.T) {
+	const SCRIPT = `
+	08 === 8 && 019 === 19 && 09.5 === 9.5 && 08e1 === 80 && 017 === 15;
+	`
+
+	testScript(SCRIPT, valueTrue, t)
+}
+
 func TestSetFunc(t *testing.T) {
 	const SCRIPT = `
 	sum(40, 2);
@@ -2967,6 +2975,32 @@ func TestPromiseResolveNonPromise(t *testing.T) {
 	testAsyncFuncWithTestLib(SCRIPT, _undefined, t)
 }
 
+func TestPromiseTry(t *testing.T) {
+	const SCRIPT = `
+	var p = Promise.resolve(1);
+	assert.sameValue(Promise.try(function () { return p; }), p, "returned promise is passed through");
+
+	var called = false;
+	var Ctor = function () { throw new Test262Error(); };
+	assert.throws(Test262Error, function () {
+		Promise.try.call(Ctor, function () { called = true; });
+	});
+	assert(called, "callback is called before the constructor");
+
+	var err = new Error();
+	var rejected = Promise.try(function () { throw err; });
+	assert(rejected instanceof Promise);
+	try {
+		await rejected;
+		assert(false, "should have been rejected");
+	} catch (e) {
+		assert.sameValue(e, err);
+	}
+	assert.sameValue(await Promise.try(function (a, b) { return a + b; }, 1, 2), 3);
+	`
+	testAsyncFuncWithTestLib(SCRIPT, _undefined, t)
+}
+
 func TestAsyncFuncThrow(t *testing.T) {
 	const SCRIPT = `
 	class TestError extends Error {
@@ -3424,6 +3458,27 @@ func ExampleRuntime_ToValue_seq2err() {
 	// Output: 1!GoError: error
 }
 
+func TestObjectRedefinePropertyNonConfigurable(t *testing.T) {
+	const SCRIPT = `
+	var o = {};
+	Object.defineProperty(o, "x", {value: 1});
+
+	assert.throws(TypeError, () => {
+		Object.defineProperty(o, "x", {get: undefined});
+	});
+	assert(deepEqual(Object.getOwnPropertyDescriptor(o, "x"), { value: 1, writable: false, enumerable: false, configurable: false }));
+
+	var p = {};
+	var getter = function() {}
+	Object.defineProperty(p, "x", {get: getter});
+	assert.throws(TypeError, () => {
+		Object.defineProperty(p, "x", {writable: false});
+	});
+	assert(deepEqual(Object.getOwnPropertyDescriptor(p, "x"), { get: getter, set: undefined, enumerable: false, configurable: false }));
+	`
+	testScriptWithTestLibX(SCRIPT, _undefined, t)
+}
+
 /*
 func TestArrayConcatSparse(t *testing.T) {
 function foo(a,b,c)
@@ -3550,6 +3605,43 @@ func BenchmarkAsciiStringMapGet(b *testing.B) {
 			b.Fatal()
 		}
 	}
+}
+
+func TestToInt32LargeFloat(t *testing.T) {
+	vm := New()
+	v, err := vm.RunString(`
+		(Math.pow(2, 63) | 0) + "," +
+		(Math.pow(2, 63) >>> 0) + "," +
+		(1e20 | 0) + "," +
+		(-1e20 | 0) + "," +
+		((Math.pow(2, 63) + Math.pow(2, 31)) | 0) + "," +
+		((Math.pow(2, 32) + 1) | 0) + "," +
+		(-1.9 | 0) + "," +
+		String.fromCharCode(Math.pow(2, 63)).charCodeAt(0)
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "0,0,1661992960,-1661992960,-2147483648,1,-1,0"
+	if got := v.String(); got != want {
+		t.Fatalf("got %s, want %s", got, want)
+	}
+}
+
+func BenchmarkToInt32Float(b *testing.B) {
+	b.Run("fast", func(b *testing.B) {
+		f := float64(1)
+		for b.Loop() {
+			floatToUint32(f)
+		}
+	})
+
+	b.Run("slow", func(b *testing.B) {
+		f := float64(math.MaxUint64)
+		for b.Loop() {
+			floatToUint32(f)
+		}
+	})
 }
 
 func BenchmarkNew(b *testing.B) {

@@ -161,17 +161,13 @@ var (
 		// "test/language/expressions/dynamic-import/for-await-resolution-and-error.js": true,
 
 		// legacy number literals
-		"test/language/literals/numeric/non-octal-decimal-integer.js": true,
-		"test/language/literals/string/S7.8.4_A4.3_T2.js":             true,
-		"test/language/literals/string/S7.8.4_A4.3_T1.js":             true,
+		"test/language/literals/string/S7.8.4_A4.3_T2.js": true,
+		"test/language/literals/string/S7.8.4_A4.3_T1.js": true,
 
 		// unicode full case folding
 		"test/built-ins/RegExp/unicode_full_case_folding.js": true,
 
 		// FIXME bugs
-
-		// 'arguments' as a destructuring assignment target in strict mode
-		"test/language/statements/for-await-of/async-func-decl-dstr-array-elem-target-simple-strict.js": true,
 
 		// Left-hand side as a CoverParenthesizedExpression
 		"test/language/expressions/assignment/fn-name-lhs-cover.js": true,
@@ -219,10 +215,6 @@ var (
 		"test/built-ins/JSON/parse/reviver-call-args-after-forward-modification.js": true,
 
 		// Language tests (class, with, module, expressions, identifiers)
-		"test/language/statements/class/subclass/private-class-field-on-nonextensible-return-override.js":                                   true,
-		"test/language/statements/class/elements/syntax/valid/grammar-field-named-set-followed-by-generator-asi.js":                         true,
-		"test/language/statements/class/elements/syntax/valid/grammar-field-named-get-followed-by-generator-asi.js":                         true,
-		"test/language/statements/class/elements/private-class-field-on-nonextensible-objects.js":                                           true,
 		"test/language/statements/with/set-mutable-binding-idref-compound-assign-with-proxy-env.js":                                         true,
 		"test/language/statements/with/set-mutable-binding-binding-deleted-with-typed-array-in-proto-chain.js":                              true,
 		"test/language/statements/with/set-mutable-binding-idref-with-proxy-env.js":                                                         true,
@@ -250,7 +242,6 @@ var (
 		"regexp-unicode-property-escapes",
 		"regexp-match-indices",
 		"regexp-modifiers",
-		"RegExp.escape",
 		"legacy-regexp",
 		"tail-call-optimization",
 		"Temporal",
@@ -266,22 +257,12 @@ var (
 		"SharedArrayBuffer",
 		"decorators",
 		"immutable-arraybuffer",
-		"joint-iteration",
-		"iterator-sequencing",
 
 		"regexp-duplicate-named-groups",
 		"regexp-v-flag",
-		"symbols-as-weakmap-keys",
-		"String.prototype.toWellFormed",
 		"explicit-resource-management",
-		"promise-try",
-		"promise-with-resolvers",
-		"array-grouping",
-		"Math.sumPrecise",
 		"Float16Array",
-		"arraybuffer-transfer",
 		"Array.fromAsync",
-		"String.prototype.isWellFormed",
 
 		"source-phase-imports",
 		"import-attributes",
@@ -378,9 +359,10 @@ func init() {
 		"test/language/literals/string/legacy-octal-",
 		"test/language/literals/string/legacy-non-octal-",
 
-		// Map getOrInsert*
-		"test/built-ins/WeakMap/prototype/getOrInsert",
-		"test/built-ins/Map/prototype/getOrInsert",
+		// modules
+		"test/language/export/",
+		"test/language/import/",
+		"test/language/module-code/",
 	)
 }
 

@@ -37,6 +37,9 @@ func (self *_parser) parseStatementList() (list []ast.Statement) {
 }
 
 func (self *_parser) parseStatement() ast.Statement {
+	self.enterNesting()
+	defer self.leaveNesting()
+
 	if self.token == token.EOF {
 		self.errorUnexpectedToken(self.token)
 		return &ast.BadStatement{From: self.idx, To: self.idx + 1}
@@ -337,6 +340,8 @@ func (self *_parser) parseArrowFunctionBody(async bool) (ast.ConciseBody, []*ast
 }
 
 func (self *_parser) parseClass(declaration bool) *ast.ClassLiteral {
+	self.enterNesting()
+	defer self.leaveNesting()
 	if declaration && !self.scope.allowLet && self.token == token.CLASS {
 		self.errorUnexpectedToken(token.CLASS)
 	}
@@ -393,7 +398,8 @@ func (self *_parser) parseClass(declaration bool) *ast.ClassLiteral {
 		var async bool
 		methodBodyStart := self.idx
 		if self.literal == "get" || self.literal == "set" {
-			if tok := self.peek(); tok != token.SEMICOLON && tok != token.LEFT_PARENTHESIS {
+			if tok := self.peek(); tok == token.LEFT_BRACKET || tok == token.STRING ||
+				tok == token.NUMBER || tok == token.PRIVATE_IDENTIFIER || token.IsId(tok) {
 				if self.literal == "get" {
 					kind = ast.PropertyKindGet
 				} else {
@@ -402,7 +408,8 @@ func (self *_parser) parseClass(declaration bool) *ast.ClassLiteral {
 				self.next()
 			}
 		} else if self.token == token.ASYNC {
-			if tok := self.peek(); tok != token.SEMICOLON && tok != token.LEFT_PARENTHESIS {
+			if tok := self.peek(); tok == token.LEFT_BRACKET || tok == token.STRING ||
+				tok == token.NUMBER || tok == token.PRIVATE_IDENTIFIER || tok == token.MULTIPLY || token.IsId(tok) {
 				async = true
 				kind = ast.PropertyKindMethod
 				self.next()
