@@ -358,11 +358,6 @@ func init() {
 		// legacy octal escape in strings in strict mode
 		"test/language/literals/string/legacy-octal-",
 		"test/language/literals/string/legacy-non-octal-",
-
-		// modules
-		"test/language/export/",
-		"test/language/import/",
-		"test/language/module-code/",
 	)
 }
 
