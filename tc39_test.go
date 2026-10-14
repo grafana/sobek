@@ -560,14 +560,11 @@ func (ctx *tc39TestCtx) runTC39Test(name, src string, meta *tc39Meta, t testing.
 	}
 
 	eventLoopQueue := make(chan func(), 10)
-	dynamicImport := meta.hasFeature("dynamic-import")
-	if dynamicImport {
-		vm.importModuleDynamically = func(referencingScriptOrModule interface{}, specifierValue Value, pcap interface{}) {
-			// fmt.Printf("import(%s, %s, %s)\n", referencingScriptOrModule, specifierValue, pcap)
-			specifier := specifierValue.String()
-			m, err := hostResolveImportedModule(referencingScriptOrModule, specifier)
-			vm.FinishLoadingImportModule(referencingScriptOrModule, specifierValue, pcap, m, err)
-		}
+	// Tests can use dynamic imports without listing the dynamic-import feature.
+	vm.importModuleDynamically = func(referencingScriptOrModule interface{}, specifierValue Value, pcap interface{}) {
+		specifier := specifierValue.String()
+		m, err := hostResolveImportedModule(referencingScriptOrModule, specifier)
+		vm.FinishLoadingImportModule(referencingScriptOrModule, specifierValue, pcap, m, err)
 	}
 	if async {
 		err := ctx.runFile(ctx.base, path.Join("harness", "doneprintHandle.js"), vm)
