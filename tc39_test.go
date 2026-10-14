@@ -436,15 +436,6 @@ func (m *tc39Meta) hasFlag(flag string) bool {
 	return false
 }
 
-func (m *tc39Meta) hasFeature(feature string) bool {
-	for _, f := range m.Features {
-		if f == feature {
-			return true
-		}
-	}
-	return false
-}
-
 func parseTC39File(name string) (*tc39Meta, string, error) {
 	f, err := os.Open(name)
 	if err != nil {
