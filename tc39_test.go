@@ -90,15 +90,6 @@ var (
 		// quantifier integer limit in regexp
 		"test/built-ins/RegExp/quantifier-integer-limit.js": true,
 
-		// GetFunctionRealm
-		"test/built-ins/Function/internals/Construct/base-ctor-revoked-proxy.js": true,
-
-		// Uses deprecated __lookupGetter__/__lookupSetter__
-		"test/language/expressions/class/elements/private-getter-is-not-a-own-property.js": true,
-		"test/language/expressions/class/elements/private-setter-is-not-a-own-property.js": true,
-		"test/language/statements/class/elements/private-setter-is-not-a-own-property.js":  true,
-		"test/language/statements/class/elements/private-getter-is-not-a-own-property.js":  true,
-
 		// restricted unicode regexp syntax
 		"test/built-ins/RegExp/unicode_restricted_octal_escape.js":                   true,
 		"test/built-ins/RegExp/unicode_restricted_incomple_quantifier.js":            true,
@@ -251,8 +242,6 @@ var (
 		"Atomics.pause",
 		"FinalizationRegistry",
 		"WeakRef",
-		"__getter__",
-		"__setter__",
 		"ShadowRealm",
 		"SharedArrayBuffer",
 		"decorators",
