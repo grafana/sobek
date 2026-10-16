@@ -4930,6 +4930,7 @@ type enterFinally struct{}
 func (enterFinally) exec(vm *vm) {
 	tf := &vm.tryStack[len(vm.tryStack)-1]
 	tf.finallyPos = -1
+	tf.catchPos = -1
 	vm.pc++
 }
 
