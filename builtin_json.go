@@ -32,11 +32,7 @@ func (r *Runtime) builtinJSON_parse(call FunctionCall) Value {
 		panic(r.newErrorf(r.getSyntaxError(), "Unexpected token at the end: %v", tok))
 	}
 
-	var reviver func(FunctionCall) Value
-
-	if arg1 := call.Argument(1); arg1 != _undefined {
-		reviver, _ = arg1.ToObject(r).self.assertCallable()
-	}
+	reviver, _ := assertCallable(call.Argument(1))
 
 	if reviver != nil {
 		root := r.NewObject()

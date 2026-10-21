@@ -79,6 +79,34 @@ func TestJSONParseReviver(t *testing.T) {
 	testScript(SCRIPT, intToValue(10), t)
 }
 
+func TestJSONParseNonCallableReviver(t *testing.T) {
+	for _, reviver := range []string{
+		"undefined", "null", "false", "0", "NaN", `"reviver"`, "Symbol()", "1n",
+		"({})", "[]", "new Number(1)", "new Proxy({}, {})",
+	} {
+		t.Run(reviver, func(t *testing.T) {
+			testScript(`JSON.parse('{"value":42}', `+reviver+`).value`, intToValue(42), t)
+		})
+	}
+}
+
+func TestJSONParseCallableReviver(t *testing.T) {
+	const SCRIPT = `
+	const calls = [];
+	const reviver = new Proxy(function(key, value) {
+		calls.push(key);
+		if (key === "value") {
+			assert.sameValue(this.value, 42);
+			return value + 1;
+		}
+		return value;
+	}, {});
+	assert.sameValue(JSON.parse('{"value":42}', reviver).value, 43);
+	assert.sameValue(calls.join(","), "value,");
+	`
+	testScriptWithTestLib(SCRIPT, _undefined, t)
+}
+
 func TestQuoteMalformedSurrogatePair(t *testing.T) {
 	testScript(`JSON.stringify("\uD800")`, asciiString(`"\ud800"`), t)
 }
