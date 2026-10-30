@@ -5,7 +5,6 @@ import (
 
 	"github.com/grafana/sobek/file"
 	"github.com/grafana/sobek/token"
-	"github.com/grafana/sobek/unistring"
 )
 
 func TestLexer(t *testing.T) {
@@ -18,13 +17,13 @@ func TestLexer(t *testing.T) {
 		test := func(src string, test ...interface{}) {
 			parser := setup(src)
 			for len(test) > 0 {
-				tkn, literal, _, idx := parser.scan()
+				tkn, literal, _, _, _, idx := parser.scan()
 				if len(test) > 0 {
 					is(tkn, test[0].(token.Token))
 					test = test[1:]
 				}
 				if len(test) > 0 {
-					is(literal, unistring.String(test[0].(string)))
+					is(literal, test[0])
 					test = test[1:]
 				}
 				if len(test) > 0 {

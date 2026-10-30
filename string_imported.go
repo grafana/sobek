@@ -3,13 +3,11 @@ package sobek
 import (
 	"hash/maphash"
 	"io"
-	"math"
 	"reflect"
 	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
 
-	"github.com/grafana/sobek/parser"
 	"github.com/grafana/sobek/unistring"
 )
 
@@ -39,7 +37,7 @@ func (i *importedString) ensureScanned() {
 func (i *importedString) ToInteger() int64 {
 	i.ensureScanned()
 	if i.u != nil {
-		return 0
+		return i.u.ToInteger()
 	}
 	return asciiString(i.s).ToInteger()
 }
@@ -67,7 +65,7 @@ func (i *importedString) String() string {
 func (i *importedString) ToFloat() float64 {
 	i.ensureScanned()
 	if i.u != nil {
-		return math.NaN()
+		return i.u.ToFloat()
 	}
 	return asciiString(i.s).ToFloat()
 }
@@ -117,6 +115,8 @@ func (i *importedString) StrictEquals(other Value) bool {
 		}
 	case *importedString:
 		return i.s == otherStr.s
+	case *concatString:
+		return i.StrictEquals(otherStr.flatten())
 	}
 	return false
 }
@@ -309,5 +309,5 @@ func (i *importedString) toUpper() String {
 }
 
 func (i *importedString) toTrimmedUTF8() string {
-	return strings.Trim(i.s, parser.WhitespaceChars)
+	return strings.Trim(i.s, WhitespaceChars)
 }

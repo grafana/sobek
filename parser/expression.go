@@ -52,15 +52,18 @@ func (self *_parser) parsePrimaryExpression() ast.Expression {
 			Value:   value,
 		}
 	case token.STRING:
+		sloppy := self.sloppyLiteral
 		self.next()
 		return &ast.StringLiteral{
 			Idx:     idx,
 			Literal: literal,
 			Value:   parsedLiteral,
+			Sloppy:  sloppy,
 		}
 	case token.NUMBER:
+		numKind := self.numLiteralKind
 		self.next()
-		value, err := parseNumberLiteral(literal)
+		value, err := parseNumberLiteral(literal, numKind)
 		if err != nil {
 			self.error(idx, err.Error())
 			value = 0
@@ -69,6 +72,7 @@ func (self *_parser) parsePrimaryExpression() ast.Expression {
 			Idx:     idx,
 			Literal: literal,
 			Value:   value,
+			Kind:    numKind,
 		}
 	case token.SLASH, token.QUOTIENT_ASSIGN:
 		return self.parseRegExpLiteral()
@@ -248,7 +252,7 @@ func (self *_parser) parseRegExpLiteral() *ast.RegExpLiteral {
 	}
 	idx := self.idxOf(offset)
 
-	pattern, _, err := self.scanString(offset, false)
+	pattern, _, _, err := self.scanString(offset, false)
 	endOffset := self.chrOffset
 
 	if err == "" {
@@ -371,7 +375,7 @@ func (self *_parser) parseObjectPropertyKey() (string, unistring.String, ast.Exp
 		self.expect(token.RIGHT_BRACKET)
 		return "", "", expr, token.ILLEGAL
 	}
-	idx, tkn, literal, parsedLiteral := self.idx, self.token, self.literal, self.parsedLiteral
+	idx, tkn, literal, parsedLiteral, sloppy, numKind := self.idx, self.token, self.literal, self.parsedLiteral, self.sloppyLiteral, self.numLiteralKind
 	var value ast.Expression
 	self.next()
 	switch tkn {
@@ -380,9 +384,10 @@ func (self *_parser) parseObjectPropertyKey() (string, unistring.String, ast.Exp
 			Idx:     idx,
 			Literal: literal,
 			Value:   parsedLiteral,
+			Sloppy:  sloppy,
 		}
 	case token.NUMBER:
-		num, err := parseNumberLiteral(literal)
+		num, err := parseNumberLiteral(literal, numKind)
 		if err != nil {
 			self.error(idx, err.Error())
 		} else {
@@ -390,6 +395,7 @@ func (self *_parser) parseObjectPropertyKey() (string, unistring.String, ast.Exp
 				Idx:     idx,
 				Literal: literal,
 				Value:   num,
+				Kind:    numKind,
 			}
 		}
 	case token.EXPORT, token.IMPORT:

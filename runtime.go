@@ -154,6 +154,8 @@ type global struct {
 	stringproto_trimEnd   *Object
 	stringproto_trimStart *Object
 
+	dateproto_toUTCString *Object
+
 	parseFloat, parseInt *Object
 
 	typedArrayValues *Object
@@ -880,11 +882,11 @@ func (r *Runtime) builtin_Number(call FunctionCall) Value {
 		case *Object:
 			primValue := t.toPrimitiveNumber()
 			if bigint, ok := primValue.(*valueBigInt); ok {
-				return intToValue((*big.Int)(bigint).Int64())
+				return bigint.numberValue()
 			}
 			return primValue.ToNumber()
 		case *valueBigInt:
-			return intToValue((*big.Int)(t).Int64())
+			return t.numberValue()
 		default:
 			return t.ToNumber()
 		}
@@ -900,12 +902,12 @@ func (r *Runtime) builtin_newNumber(args []Value, proto *Object) *Object {
 		case *Object:
 			primValue := t.toPrimitiveNumber()
 			if bigint, ok := primValue.(*valueBigInt); ok {
-				v = intToValue((*big.Int)(bigint).Int64())
+				v = bigint.numberValue()
 			} else {
 				v = primValue.ToNumber()
 			}
 		case *valueBigInt:
-			v = intToValue((*big.Int)(t).Int64())
+			v = t.numberValue()
 		default:
 			v = t.ToNumber()
 		}
@@ -1709,7 +1711,17 @@ invalid characters).
 
 # Nil
 
-Nil is converted to null.
+Nil is converted to null. This includes nil pointers, nil interfaces, nil slices, and nil functions. Note that they lose
+their type as a result and exported as plain nil interface (nil type and nil value).
+
+# Pointers
+
+Pointers are de-referenced and the referenced object dictates the shape of the Value. The Value keeps referring to the
+same object, so any changes made to it will be reflected. If the referenced value is a nil map without methods, setting
+a property creates a map. Same applies to slices.
+
+Note, the indirection only goes one level, i.e. a pointer to a pointer becomes a generic empty Object. As with any
+Object wrapper it can have Symbol properties, but no string or index properties. It exports to the original pointer value.
 
 # Functions
 
@@ -1978,7 +1990,7 @@ func (r *Runtime) toValue(i interface{}, origValue reflect.Value) Value {
 	}
 
 	value := origValue
-	for value.Kind() == reflect.Ptr {
+	if value.Kind() == reflect.Pointer {
 		value = value.Elem()
 	}
 
@@ -1988,7 +2000,7 @@ func (r *Runtime) toValue(i interface{}, origValue reflect.Value) Value {
 
 	switch value.Kind() {
 	case reflect.Map:
-		if value.IsNil() {
+		if value.IsNil() && !value.CanSet() {
 			return _null
 		}
 		if value.Type().NumMethod() == 0 {
@@ -2028,6 +2040,9 @@ func (r *Runtime) toValue(i interface{}, origValue reflect.Value) Value {
 		obj.self = a
 		return obj
 	case reflect.Slice:
+		if value.IsNil() && !value.CanSet() {
+			return _null
+		}
 		obj := &Object{runtime: r}
 		a := &objectGoSliceReflect{
 			objectGoArrayReflect: objectGoArrayReflect{
@@ -2500,7 +2515,7 @@ func (r *Runtime) Set(name string, value interface{}) error {
 // This method will panic with an *Exception if a JavaScript exception is thrown in the process. Use Runtime.Try to catch these.
 func (r *Runtime) Get(name string) Value {
 	n := unistring.NewFromString(name)
-	if v, exists := r.global.stash.getByName(n); exists {
+	if v, exists := r.global.stash.getByName(n, false); exists {
 		return v
 	} else {
 		return r.globalObject.self.getStr(n, nil)
