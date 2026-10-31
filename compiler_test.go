@@ -1336,6 +1336,58 @@ func TestCatchVarNotUsedInStashlessFunc(t *testing.T) {
 	testScript(SCRIPT, asciiString("ok"), t)
 }
 
+func TestCatchParamVarRedeclaration(t *testing.T) {
+	const SCRIPT = `
+	try {
+		throw "ex";
+	} catch (e) {
+		var e = 1;
+		assert.sameValue(e, 1, "catch param");
+	}
+	assert.sameValue(e, undefined, "global var");
+
+	function f() {
+		try {
+			throw "ex";
+		} catch (e) {
+			for (var e = 2; e < 3; e++) {}
+			var captured = function() { return e; };
+		}
+		return [e, captured()];
+	}
+	assert(compareArray(f(), [undefined, 3]), "function var");
+
+	function f1() {
+		try {
+			throw "ex";
+		} catch (e) {
+			eval("var e = 4");
+			assert.sameValue(e, 4, "catch param (eval)");
+		}
+		return e;
+	}
+	assert.sameValue(f1(), undefined, "function var (eval)");
+
+	assert.throws(SyntaxError, function() {
+		eval("try {} catch ([e]) { var e; }");
+	}, "destructuring catch param");
+	assert.throws(SyntaxError, function() {
+		eval("try {} catch (e) { let e; }");
+	}, "let");
+	assert.throws(SyntaxError, function() {
+		eval("try {} catch (e) { function e() {} }");
+	}, "function declaration");
+	assert.throws(SyntaxError, function() {
+		try {
+			throw [];
+		} catch ([e]) {
+			eval("var e");
+		}
+	}, "destructuring catch param (eval)");
+	`
+	testScriptWithTestLib(SCRIPT, _undefined, t)
+}
+
 func TestNew(t *testing.T) {
 	const SCRIPT = `
 	function O() {
@@ -2826,6 +2878,46 @@ func TestStrictDestructuringAssignArguments(t *testing.T) {
 	if _, ok := err.(*CompilerSyntaxError); !ok {
 		t.Errorf("eval: expected syntax error, got %v", err)
 	}
+}
+
+func TestStrictStringOctalEscapes(t *testing.T) {
+	for _, lit := range []string{`'\1'`, `'\7'`, `'\00'`, `'\08'`, `'\8'`, `'\9'`, `'a\\\1'`} {
+		_, err := Compile("", "'use strict'; "+lit, false)
+		if _, ok := err.(*CompilerSyntaxError); !ok {
+			t.Errorf("%s: expected syntax error, got %v", lit, err)
+		}
+		if _, err := Compile("", lit, false); err != nil {
+			t.Errorf("%s: unexpected error in non-strict mode: %v", lit, err)
+		}
+	}
+	for _, src := range []string{
+		`function f() { '\1'; 'use strict'; }`,
+		`'use strict'; ({'\1': 0})`,
+		`class C { '\1'() {} }`,
+	} {
+		_, err := Compile("", src, false)
+		if _, ok := err.(*CompilerSyntaxError); !ok {
+			t.Errorf("%s: expected syntax error, got %v", src, err)
+		}
+	}
+
+	const SCRIPT = `
+	'use strict';
+	'\0' + 'a\0b' + '\\1';
+	`
+	testScript(SCRIPT, asciiString("\x00a\x00b\\1"), t)
+}
+
+func TestStringLiteralMaxCodePointEscape(t *testing.T) {
+	const SCRIPT = `
+	const s = String.fromCodePoint(0x10FFFF);
+	assert.sameValue('\u{10FFFF}', s, "string");
+	assert.sameValue('a\u{10FFFF}b', "a" + s + "b", "string with other characters");
+	assert.sameValue(` + "`\\u{10FFFF}`" + `, s, "template");
+	assert.sameValue(eval("'\\u{10FFFF}'"), s, "eval");
+	assert.sameValue({'\u{10FFFF}': 1}[s], 1, "property key");
+	`
+	testScriptWithTestLib(SCRIPT, _undefined, t)
 }
 
 func TestReturnUndefined(t *testing.T) {
