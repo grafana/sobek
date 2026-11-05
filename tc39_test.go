@@ -95,9 +95,6 @@ var (
 
 		// FIXME bugs
 
-		// Left-hand side as a CoverParenthesizedExpression
-		"test/language/expressions/assignment/fn-name-lhs-cover.js": true,
-
 		// quantifier integer limit in regexp
 		"test/built-ins/RegExp/quantifier-integer-limit.js": true,
 
@@ -188,7 +185,6 @@ var (
 		"regexp-duplicate-named-groups",
 		"regexp-v-flag",
 		"explicit-resource-management",
-		"Float16Array",
 		"Array.fromAsync",
 
 		"source-phase-imports",
@@ -856,6 +852,8 @@ func TestTC39(t *testing.T) {
 		ctx.runTC39Tests("test/annexB/built-ins/RegExp")
 		ctx.runTC39Tests("test/annexB/language/comments")
 		ctx.runTC39Tests("test/annexB/language/literals")
+		ctx.runTC39Tests("test/annexB/language/statements/for-in")
+		ctx.runTC39Tests("test/annexB/language/statements/labeled")
 		ctx.runTC39Tests("test/annexB/language/statements/try")
 
 		ctx.flush()
