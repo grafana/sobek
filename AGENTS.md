@@ -31,3 +31,4 @@ The promise job queue drains synchronously when the top-level script function re
 - **Interrupt vs. cancel**: Runaway scripts are stopped with the runtime's interrupt method, not context cancellation. After interrupting, the interrupt flag must be explicitly cleared before reuse, or the next execution immediately aborts.
 
 - **Object cross-runtime panic**: Passing an Object created in one runtime to another runtime's method silently compiles but panics at runtime. The check is in the Go-to-JS value conversion path.
+- Security issues should be reported via [Grafana's security issue reporting page](https://grafana.com/legal/report-a-security-issue/) and not directly in this repository.
